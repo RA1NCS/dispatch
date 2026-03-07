@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Threat Feed - Guardian{% endblock %}
+
+{% block content %}
+<div class="fade-in font-mono">
+    <div class="mb-8">
+        <div class="flex items-center justify-between">
+            <h1 class="font-bold text-white text-xl tracking-tight">THREAT FEED</h1>
+            {% if active_severity or active_category or active_service %}
+            <a href="/alerts" class="text-[11px] text-dim hover:text-status-cyan transition-colors uppercase tracking-widest">Clear filters</a>
+            {% endif %}
+        </div>
+        <p class="text-dim text-[13px] mt-2">Real-time security alerts filtered for your threat landscape.</p>
+    </div>
+
+    <div class="mb-6 space-y-4">
+        <div>
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-2"><span class="text-status-cyan mr-1.5">//</span>SEVERITY</div>
+            <div class="flex flex-wrap gap-1.5">
+                <a href="{{ filter_url(category=active_category, service=active_service) }}"
+                   class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
+                   {% if not active_severity %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                    ALL
+                </a>
+                {% for sev in severities %}
+                <a href="{{ filter_url(severity=sev, category=active_category, service=active_service) }}"
+                   class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
+                   {% if active_severity == sev %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                    {{ sev }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div>
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-2"><span class="text-status-cyan mr-1.5">//</span>CATEGORY</div>
+            <div class="flex flex-wrap gap-1.5">
+                <a href="{{ filter_url(severity=active_severity, service=active_service) }}"
+                   class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
+                   {% if not active_category %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                    ALL
+                </a>
+                {% for cat in categories %}
+                <a href="{{ filter_url(severity=active_severity, category=cat, service=active_service) }}"
+                   class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
+                   {% if active_category == cat %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                    {{ category_labels[cat] }}
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
+            <span class="text-status-cyan mr-1.5">//</span>ALERTS
+            <span class="text-border-2 ml-1">&middot;</span>
+            <span class="ml-1">{{ alerts|length }} found</span>
+        </div>
+
+        {% if alerts %}
+        <div class="border border-border-1 divide-y divide-border-1">
+            {% for alert in alerts %}
+            <details class="group">
+                <summary class="flex items-center gap-4 px-5 py-3.5 cursor-pointer hover:bg-white/[0.02] transition-colors">
+                    <span class="w-2 h-2 flex-shrink-0 {{ severity_colors[alert.severity] }}"></span>
+                    <span class="text-[13px] text-white flex-1">{{ alert.title }}</span>
+                    <span class="text-[11px] px-2 py-0.5 border border-border-1 text-dim uppercase">{{ category_labels[alert.category] }}</span>
+                    <span class="text-[11px] text-dim whitespace-nowrap">{{ alert.date }}</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-dim flex-shrink-0 group-open:rotate-180 transition-transform">
+                        <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                </summary>
+                <div class="px-5 pb-4 pt-1 ml-6 border-l border-border-1">
+                    <p class="text-[13px] text-muted leading-relaxed mb-3">{{ alert.description }}</p>
+                    <div class="flex items-center gap-3 text-[11px] text-dim mb-2">
+                        <span>{{ alert.source }}</span>
+                        <span class="text-border-2">&middot;</span>
+                        <span>{{ alert.region }}</span>
+                    </div>
+                    {% if alert.affected_services %}
+                    <div class="flex flex-wrap gap-1.5 mt-2">
+                        {% for s in alert.affected_services %}
+                        <span class="text-[11px] px-2 py-0.5 bg-white/[0.03] border border-border-1 text-muted">{{ service_labels[s] }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </details>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="border border-border-1 px-5 py-8 text-center text-dim text-[13px]">
+            No alerts match the current filters.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

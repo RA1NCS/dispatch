@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -29,6 +30,30 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+ALERT_SEVERITIES = ["critical", "high", "medium", "low"]
+ALERT_CATEGORIES = ["phishing", "data_breach", "vulnerability", "malware", "scam"]
+CATEGORY_LABELS = {
+    "phishing": "Phishing",
+    "data_breach": "Data Breach",
+    "vulnerability": "Vulnerability",
+    "malware": "Malware",
+    "scam": "Scam",
+}
+SEVERITY_COLORS = {
+    "critical": "bg-status-red",
+    "high": "bg-status-orange",
+    "medium": "bg-status-yellow",
+    "low": "bg-status-cyan",
+}
+
+
+def build_filter_url(**params):
+    qs = "&".join(f"{k}={v}" for k, v in params.items() if v)
+    return f"/alerts?{qs}" if qs else "/alerts"
+
+
+templates.env.globals["filter_url"] = build_filter_url
+
 app = FastAPI(title="Guardian", version="0.1.0")
 
 
@@ -50,6 +75,11 @@ def form_context():
     }
 
 
+def load_alerts():
+    with open(BASE_DIR / "data" / "alerts_seed.json") as f:
+        return sorted(json.load(f), key=lambda a: a["date"], reverse=True)
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -64,6 +94,38 @@ def index(request: Request):
             "request": request,
             "profiles": profiles,
             **form_context(),
+        },
+    )
+
+
+@app.get("/alerts")
+def alerts_page(
+    request: Request,
+    severity: str | None = None,
+    category: str | None = None,
+    service: str | None = None,
+):
+    alerts = load_alerts()
+    if severity:
+        alerts = [a for a in alerts if a["severity"] == severity]
+    if category:
+        alerts = [a for a in alerts if a["category"] == category]
+    if service:
+        alerts = [a for a in alerts if service in a["affected_services"]]
+    return templates.TemplateResponse(
+        "alerts.html",
+        {
+            "request": request,
+            "alerts": alerts,
+            "severities": ALERT_SEVERITIES,
+            "categories": ALERT_CATEGORIES,
+            "category_labels": CATEGORY_LABELS,
+            "severity_colors": SEVERITY_COLORS,
+            "services": VALID_SERVICES,
+            "service_labels": SERVICE_LABELS,
+            "active_severity": severity,
+            "active_category": category,
+            "active_service": service,
         },
     )
 
