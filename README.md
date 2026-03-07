@@ -1,5 +1,5 @@
-Candidate Name: Shreyan Gupta
-Scenario Chosen: Community Safety & Digital Wellness
+Candidate Name: Shreyan Gupta  
+Scenario Chosen: Community Safety & Digital Wellness  
 Estimated Time Spent: In Progress
 
 ## Guardian
@@ -14,12 +14,6 @@ source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env  # Add your API keys
 uvicorn app.main:app --reload
-```
-
-### Test Commands
-
-```bash
-pytest tests/
 ```
 
 ### AI Disclosure

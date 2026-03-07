@@ -2,107 +2,118 @@
 {% block title %}Profile #{{ profile.id }} - Guardian{% endblock %}
 
 {% block content %}
-<div class="slide-up">
-    <div class="flex items-center gap-3 mb-8">
-        <a href="/" class="text-gray-500 hover:text-white transition-colors">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15 18l-6-6 6-6"/>
-            </svg>
-        </a>
-        <div>
-            <h1 class="text-2xl font-bold text-white tracking-[-0.02em]">Threat Profile</h1>
-            <p class="text-[13px] text-gray-500">Created {{ profile.created_at[:10] }}</p>
-        </div>
+<div class="fade-in font-mono">
+    <div class="flex items-center gap-3 mb-8 text-[13px]">
+        <a href="/" class="text-dim hover:text-white transition-colors">&larr; back</a>
+        <span class="text-border-2">|</span>
+        <h1 class="font-bold text-white tracking-tight">PROFILE <span class="text-status-cyan">#{{ profile.id }}</span></h1>
+        <span class="text-dim">{{ profile.created_at[:10] }}</span>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 card p-6">
-            <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-5">Edit Profile</h2>
-
-            <form action="/profiles/{{ profile.id }}" method="post" class="space-y-6">
-                <div>
-                    <label class="block text-[13px] font-medium text-gray-300 mb-2">Region</label>
-                    <select name="region" required class="w-full bg-surface-3 border border-stroke-2 rounded-lg px-4 py-2.5 text-[14px] text-white focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all">
-                        {% for r in regions %}
-                        <option value="{{ r }}" {% if r == profile.region %}selected{% endif %}>{{ region_labels[r] }}</option>
-                        {% endfor %}
-                    </select>
+    <div class="grid grid-cols-3 gap-6">
+        <div class="col-span-2">
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-3"><span class="text-status-cyan mr-1.5">//</span>EDIT PROFILE</div>
+            <form action="/profiles/{{ profile.id }}" method="post" class="border border-border-1 divide-y divide-border-1">
+                <div class="px-5 py-4">
+                    <label class="block text-[11px] text-dim uppercase tracking-widest mb-2">Region</label>
+                    <div class="custom-select">
+                        <button type="button" class="select-trigger">
+                            <span class="select-label">{{ region_labels[profile.region] }}</span>
+                            <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                        </button>
+                        <div class="select-dropdown">
+                            {% for r in regions %}
+                            <div class="select-option{% if r == profile.region %} selected{% endif %}" data-value="{{ r }}">{{ region_labels[r] }}</div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="region" value="{{ profile.region }}" required>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-[13px] font-medium text-gray-300 mb-2">Services You Use</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div class="px-5 py-4">
+                    <label class="block text-[11px] text-dim uppercase tracking-widest mb-3">Services</label>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-2.5">
                         {% for s in services %}
-                        <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-3 border border-stroke-1 hover:border-stroke-3 cursor-pointer transition-all has-[:checked]:border-accent/40 has-[:checked]:bg-accent-muted">
-                            <input type="checkbox" name="services" value="{{ s }}" {% if s in profile.services %}checked{% endif %} class="w-3.5 h-3.5 rounded accent-accent-light" />
-                            <span class="text-[13px] text-gray-300">{{ service_labels[s] }}</span>
+                        <label class="svc-toggle flex items-center gap-3 cursor-pointer group">
+                            <input type="checkbox" name="services" value="{{ s }}" {% if s in profile.services %}checked{% endif %} />
+                            <span class="box"></span>
+                            <span class="text-[13px] text-muted group-hover:text-white transition-colors">{{ service_labels[s] }}</span>
                         </label>
                         {% endfor %}
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="px-5 py-4 grid grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-[13px] font-medium text-gray-300 mb-2">Work Situation</label>
-                        <select name="work_situation" required class="w-full bg-surface-3 border border-stroke-2 rounded-lg px-4 py-2.5 text-[14px] text-white focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all">
-                            {% for w in work_situations %}
-                            <option value="{{ w }}" {% if w == profile.work_situation %}selected{% endif %}>{{ work_labels[w] }}</option>
-                            {% endfor %}
-                        </select>
+                        <label class="block text-[11px] text-dim uppercase tracking-widest mb-2">Work Situation</label>
+                        <div class="custom-select">
+                            <button type="button" class="select-trigger">
+                                <span class="select-label">{{ work_labels[profile.work_situation] }}</span>
+                                <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                            </button>
+                            <div class="select-dropdown">
+                                {% for w in work_situations %}
+                                <div class="select-option{% if w == profile.work_situation %} selected{% endif %}" data-value="{{ w }}">{{ work_labels[w] }}</div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="work_situation" value="{{ profile.work_situation }}" required>
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-[13px] font-medium text-gray-300 mb-2">Primary Concern</label>
-                        <select name="primary_concern" required class="w-full bg-surface-3 border border-stroke-2 rounded-lg px-4 py-2.5 text-[14px] text-white focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/20 transition-all">
-                            {% for c in concerns %}
-                            <option value="{{ c }}" {% if c == profile.primary_concern %}selected{% endif %}>{{ concern_labels[c] }}</option>
-                            {% endfor %}
-                        </select>
+                        <label class="block text-[11px] text-dim uppercase tracking-widest mb-2">Primary Concern</label>
+                        <div class="custom-select">
+                            <button type="button" class="select-trigger">
+                                <span class="select-label">{{ concern_labels[profile.primary_concern] }}</span>
+                                <svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                            </button>
+                            <div class="select-dropdown">
+                                {% for c in concerns %}
+                                <div class="select-option{% if c == profile.primary_concern %} selected{% endif %}" data-value="{{ c }}">{{ concern_labels[c] }}</div>
+                                {% endfor %}
+                            </div>
+                            <input type="hidden" name="primary_concern" value="{{ profile.primary_concern }}" required>
+                        </div>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-accent hover:bg-accent-light text-white font-medium text-[14px] py-2.5 rounded-lg transition-all duration-200 hover:shadow-lg hover:shadow-accent/20">
-                    Update Profile
-                </button>
+                <div class="px-5 py-4">
+                    <button type="submit" class="w-full bg-white/[0.05] border border-border-2 hover:bg-white/[0.08] text-white text-[13px] py-2.5 transition-colors uppercase tracking-widest">
+                        Update Profile
+                    </button>
+                </div>
             </form>
         </div>
 
-        <div class="space-y-4">
-            <div class="card p-5">
-                <h3 class="text-[12px] font-medium text-gray-500 uppercase tracking-wider mb-3">Current Settings</h3>
-                <dl class="space-y-3">
-                    <div>
-                        <dt class="text-[11px] text-gray-500">Region</dt>
-                        <dd class="text-[14px] text-white">{{ region_labels[profile.region] }}</dd>
+        <div>
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-3"><span class="text-status-cyan mr-1.5">//</span>CURRENT CONFIG</div>
+            <div class="border border-border-1 divide-y divide-border-1 text-[13px]">
+                <div class="px-5 py-3 flex justify-between">
+                    <span class="text-dim">region</span>
+                    <span class="text-white">{{ region_labels[profile.region] }}</span>
+                </div>
+                <div class="px-5 py-3 flex justify-between">
+                    <span class="text-dim">work</span>
+                    <span class="text-white">{{ work_labels[profile.work_situation] }}</span>
+                </div>
+                <div class="px-5 py-3 flex justify-between">
+                    <span class="text-dim">concern</span>
+                    <span class="text-white">{{ concern_labels[profile.primary_concern] }}</span>
+                </div>
+                <div class="px-5 py-3">
+                    <span class="text-dim block mb-2">services</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        {% for s in profile.services %}
+                        <span class="text-[11px] px-2 py-1 bg-status-cyan/[0.06] border border-status-cyan/20 text-status-cyan/80">{{ service_labels[s] }}</span>
+                        {% endfor %}
                     </div>
-                    <div>
-                        <dt class="text-[11px] text-gray-500">Work Situation</dt>
-                        <dd class="text-[14px] text-white">{{ work_labels[profile.work_situation] }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-[11px] text-gray-500">Primary Concern</dt>
-                        <dd class="text-[14px] text-white">{{ concern_labels[profile.primary_concern] }}</dd>
-                    </div>
-                    <div>
-                        <dt class="text-[11px] text-gray-500">Services</dt>
-                        <dd class="flex flex-wrap gap-1.5 mt-1">
-                            {% for s in profile.services %}
-                            <span class="text-[11px] px-2 py-0.5 rounded-full bg-accent-muted text-accent-light">{{ service_labels[s] }}</span>
-                            {% endfor %}
-                        </dd>
-                    </div>
-                </dl>
+                </div>
             </div>
 
-            <a href="#" id="run-analysis-btn" class="card p-5 flex items-center gap-3 group hover:border-status-safe/30 transition-all duration-200 cursor-pointer">
-                <div class="w-10 h-10 rounded-lg bg-status-safe/10 flex items-center justify-center group-hover:bg-status-safe/20 transition-colors">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-status-safe">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
-                    </svg>
-                </div>
-                <div>
-                    <span class="text-[14px] font-medium text-white block">Run Analysis</span>
-                    <span class="text-[12px] text-gray-500">Start a security scan for this profile</span>
-                </div>
+            <a href="#" id="run-analysis-btn" class="mt-4 flex items-center justify-center gap-2 border border-status-cyan/30 bg-status-cyan/[0.06] hover:bg-status-cyan/[0.12] px-5 py-3 transition-colors">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="text-status-cyan">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                <span class="text-[13px] text-status-cyan uppercase tracking-widest">Run Analysis</span>
             </a>
         </div>
     </div>

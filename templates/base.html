@@ -1,182 +1,289 @@
 <!doctype html>
-<html lang="en" class="h-full antialiased">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Guardian{% endblock %}</title>
+<html
+    lang="en"
+    class="h-full"
+>
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+        />
+        <title>{% block title %}Guardian{% endblock %}</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <link
+            rel="preconnect"
+            href="https://fonts.googleapis.com"
+        />
+        <link
+            rel="preconnect"
+            href="https://fonts.gstatic.com"
+            crossorigin
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+        <script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
 
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Geist', 'system-ui', 'sans-serif'],
-                        mono: ['Geist Mono', 'ui-monospace', 'monospace'],
-                    },
-                    colors: {
-                        surface: {
-                            0: '#06080d',
-                            1: '#0c1018',
-                            2: '#121824',
-                            3: '#1a2232',
-                            4: '#232d40',
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            sans: ['Inter', 'system-ui', 'sans-serif'],
+                            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
                         },
-                        stroke: {
-                            1: 'rgba(255, 255, 255, 0.06)',
-                            2: 'rgba(255, 255, 255, 0.1)',
-                            3: 'rgba(255, 255, 255, 0.16)',
+                        colors: {
+                            bg: '#07080a',
+                            surface: {
+                                1: '#0d0e12',
+                                2: '#131417',
+                                3: '#1a1b1f',
+                            },
+                            border: {
+                                1: 'rgba(255,255,255,0.07)',
+                                2: 'rgba(255,255,255,0.12)',
+                            },
+                            dim: '#5a5b63',
+                            muted: '#8b8c94',
+                            status: {
+                                cyan: '#06b6d4',
+                                green: '#22c55e',
+                                red: '#ef4444',
+                                yellow: '#eab308',
+                                blue: '#3b82f6',
+                            },
                         },
-                        accent: {
-                            DEFAULT: '#6366f1',
-                            light: '#818cf8',
-                            muted: 'rgba(99, 102, 241, 0.12)',
-                        },
-                        status: {
-                            safe: '#34d399',
-                            warn: '#fbbf24',
-                            danger: '#f87171',
-                            info: '#60a5fa',
+                        borderRadius: {
+                            sm: '2px',
+                            DEFAULT: '3px',
+                            md: '4px',
                         },
                     },
                 },
-            },
-        };
-    </script>
+            };
+        </script>
 
-    <style>
-        * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        body { font-feature-settings: 'ss01', 'ss02', 'cv01'; letter-spacing: -0.011em; }
+        <style>
+            * {
+                -webkit-font-smoothing: antialiased;
+            }
 
-        .fade-in {
-            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-        .fade-in-delay-1 { animation-delay: 0.06s; }
-        .fade-in-delay-2 { animation-delay: 0.12s; }
-        .fade-in-delay-3 { animation-delay: 0.18s; }
+            .fade-in {
+                animation: fadeIn 0.2s ease-out both;
+            }
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                }
+                to {
+                    opacity: 1;
+                }
+            }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+            .htmx-settling {
+                opacity: 0;
+            }
+            .htmx-added {
+                opacity: 1;
+                transition: opacity 0.15s ease-out;
+            }
 
-        .glow-pulse {
-            animation: glowPulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes glowPulse {
-            0%, 100% { box-shadow: 0 0 12px -2px rgba(99, 102, 241, 0.25); }
-            50% { box-shadow: 0 0 24px -2px rgba(99, 102, 241, 0.45); }
-        }
+            select,
+            input {
+                background-color: #131417;
+                color: #e4e4e7;
+            }
+            select option {
+                background: #131417;
+            }
 
-        .slide-up {
-            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(16px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+            .svc-toggle input { display: none; }
+            .svc-toggle .box {
+                width: 14px; height: 14px;
+                border: 1px solid rgba(255,255,255,0.12);
+                background: #131417;
+                display: flex; align-items: center; justify-content: center;
+                transition: border-color 0.1s ease, background-color 0.1s ease;
+                flex-shrink: 0;
+            }
+            .svc-toggle input:checked + .box {
+                border-color: #06b6d4;
+                background: rgba(6,182,212,0.15);
+            }
+            .svc-toggle input:checked + .box::after {
+                content: '';
+                width: 6px; height: 6px;
+                background: #06b6d4;
+            }
+            .svc-toggle:hover .box { border-color: rgba(255,255,255,0.2); }
 
-        .htmx-settling { opacity: 0; }
-        .htmx-added { transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1); opacity: 1; }
-        .htmx-swapping { opacity: 0; transition: opacity 0.15s ease-out; }
+            ::-webkit-scrollbar {
+                width: 4px;
+            }
+            ::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.06);
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
 
-        .card {
-            background: linear-gradient(145deg, rgba(18, 24, 36, 0.8), rgba(12, 16, 24, 0.9));
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 12px;
-            backdrop-filter: blur(8px);
-        }
-        .card:hover {
-            border-color: rgba(255, 255, 255, 0.1);
-            transition: border-color 0.2s ease;
-        }
+            .custom-select { position: relative; }
+            .select-trigger {
+                width: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: #131417;
+                border: 1px solid rgba(255,255,255,0.07);
+                padding: 10px 16px;
+                font-size: 13px;
+                color: #e4e4e7;
+                cursor: pointer;
+                transition: border-color 0.15s ease;
+            }
+            .select-trigger:hover { border-color: rgba(255,255,255,0.12); }
+            .select-trigger.invalid { border-color: #ef4444; }
+            .select-label.placeholder { color: #5a5b63; }
+            .select-chevron {
+                width: 12px; height: 12px;
+                color: #5a5b63;
+                flex-shrink: 0;
+                transition: transform 0.15s ease-out;
+            }
+            .custom-select.open .select-chevron { transform: rotate(180deg); }
+            .select-dropdown {
+                position: absolute;
+                top: calc(100% + 2px);
+                left: 0; right: 0;
+                background: #131417;
+                border: 1px solid rgba(255,255,255,0.07);
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 50;
+                opacity: 0;
+                transform: translateY(-4px);
+                pointer-events: none;
+                transition: opacity 0.12s ease-out, transform 0.12s ease-out;
+            }
+            .custom-select.open .select-dropdown {
+                opacity: 1;
+                transform: translateY(0);
+                pointer-events: auto;
+            }
+            .select-option {
+                padding: 8px 16px;
+                font-size: 13px;
+                color: #8b8c94;
+                cursor: pointer;
+                transition: background 0.1s ease, color 0.1s ease;
+            }
+            .select-option:hover {
+                background: rgba(255,255,255,0.04);
+                color: #e4e4e7;
+            }
+            .select-option.selected { color: #06b6d4; }
 
-        .nav-link {
-            position: relative;
-            padding: 0.25rem 0;
-        }
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -1px;
-            left: 0;
-            width: 0;
-            height: 1.5px;
-            background: linear-gradient(90deg, #6366f1, #34d399);
-            border-radius: 1px;
-            transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .nav-link:hover::after,
-        .nav-link.active::after {
-            width: 100%;
-        }
-
-        .gradient-text {
-            background: linear-gradient(135deg, #818cf8, #34d399);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .noise-overlay {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            opacity: 0.015;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-            z-index: 9999;
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.08); border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.14); }
-    </style>
-</head>
-<body class="h-full bg-surface-0 text-gray-200 font-sans">
-    <div class="noise-overlay"></div>
-    <div class="min-h-full flex flex-col">
-        <nav class="border-b border-stroke-1 bg-surface-1/70 backdrop-blur-xl sticky top-0 z-50">
-            <div class="mx-auto max-w-5xl px-6 py-4 flex items-center justify-between">
-                <a href="/" class="flex items-center gap-2.5 group">
-                    <div class="w-8 h-8 rounded-lg bg-accent-muted flex items-center justify-center group-hover:glow-pulse transition-all duration-300">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-accent-light">
+            @media (prefers-reduced-motion: reduce) {
+                .fade-in { animation: none; }
+                .htmx-added { transition: none; }
+                .svc-toggle .box { transition: none; }
+                .select-chevron { transition: none; }
+                .select-dropdown { transition: none; }
+                .select-trigger { transition: none; }
+                .select-option { transition: none; }
+            }
+        </style>
+    </head>
+    <body class="h-full bg-bg text-gray-300 font-sans text-[13px]">
+        <div class="min-h-full flex flex-col">
+            <nav class="border-b border-border-1 bg-surface-1 sticky top-0 z-50">
+                <div class="mx-auto max-w-3xl px-6 h-12 flex items-center justify-between font-mono">
+                    <a href="/" class="flex items-center gap-2 font-bold text-white text-[13px] tracking-tight">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-status-cyan">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         </svg>
+                        GUARDIAN
+                    </a>
+                    <div class="flex items-center gap-4 text-[12px] text-dim">
+                        <a href="/" class="hover:text-white transition-colors">Home</a>
+                        <a href="/alerts" class="hover:text-white transition-colors">Alerts</a>
+                        <a href="/phishing" class="hover:text-white transition-colors">Phishing</a>
+                        <a href="/password" class="hover:text-white transition-colors">Password</a>
+                        <a href="/audit" class="hover:text-white transition-colors">Audit</a>
+                        <span class="flex items-center gap-1.5 text-[11px] ml-2">
+                            <span class="w-1.5 h-1.5 bg-status-cyan"></span>
+                            ONLINE
+                        </span>
                     </div>
-                    <span class="text-[15px] font-semibold tracking-[-0.02em] text-white">Guardian</span>
-                </a>
-                <div class="flex items-center gap-1">
-                    <a href="/" class="nav-link text-[13px] text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-white/[0.04]">Home</a>
-                    <a href="/alerts" class="nav-link text-[13px] text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-white/[0.04]">Alerts</a>
-                    <a href="/phishing" class="nav-link text-[13px] text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-white/[0.04]">Phishing</a>
-                    <a href="/password" class="nav-link text-[13px] text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-white/[0.04]">Password</a>
-                    <a href="/audit" class="nav-link text-[13px] text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-md hover:bg-white/[0.04]">Audit Log</a>
                 </div>
-            </div>
-        </nav>
+            </nav>
 
-        <main class="mx-auto max-w-5xl w-full px-6 py-10 flex-1">
-            {% block content %}{% endblock %}
-        </main>
+            <main class="mx-auto max-w-3xl w-full px-6 py-10 flex-1">
+                {% block content %}{% endblock %}
+            </main>
 
-        <footer class="border-t border-stroke-1 py-6">
-            <div class="mx-auto max-w-5xl px-6 flex items-center justify-between text-[12px] text-gray-500">
-                <span>Guardian v0.1</span>
-                <span class="flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-status-safe animate-pulse"></span>
-                    System Operational
-                </span>
-            </div>
-        </footer>
-    </div>
-</body>
+            <footer class="border-t border-border-1 py-4">
+                <div class="mx-auto max-w-3xl px-6 flex items-center justify-between text-[11px] font-mono text-dim">
+                    <span>GUARDIAN v0.1</span>
+                    <span>COMMUNITY SAFETY & DIGITAL WELLNESS</span>
+                </div>
+            </footer>
+        </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('.custom-select').forEach(sel => {
+                    const trigger = sel.querySelector('.select-trigger');
+                    const dropdown = sel.querySelector('.select-dropdown');
+                    const hidden = sel.querySelector('input[type="hidden"]');
+                    const label = sel.querySelector('.select-label');
+
+                    trigger.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        document.querySelectorAll('.custom-select.open').forEach(s => {
+                            if (s !== sel) s.classList.remove('open');
+                        });
+                        sel.classList.toggle('open');
+                    });
+
+                    sel.querySelectorAll('.select-option').forEach(opt => {
+                        opt.addEventListener('click', () => {
+                            hidden.value = opt.dataset.value;
+                            label.textContent = opt.textContent;
+                            label.classList.remove('placeholder');
+                            trigger.classList.remove('invalid');
+                            sel.classList.remove('open');
+                            sel.querySelectorAll('.select-option').forEach(o => o.classList.remove('selected'));
+                            opt.classList.add('selected');
+                        });
+                    });
+                });
+
+                document.addEventListener('click', () => {
+                    document.querySelectorAll('.custom-select.open').forEach(s => s.classList.remove('open'));
+                });
+
+                document.querySelectorAll('form').forEach(form => {
+                    form.addEventListener('submit', (e) => {
+                        let valid = true;
+                        form.querySelectorAll('.custom-select input[type="hidden"]').forEach(input => {
+                            if (input.hasAttribute('required') && !input.value) {
+                                valid = false;
+                                input.closest('.custom-select').querySelector('.select-trigger').classList.add('invalid');
+                            }
+                        });
+                        if (!valid) e.preventDefault();
+                    });
+                });
+            });
+        </script>
+    </body>
 </html>
