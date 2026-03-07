@@ -1,0 +1,91 @@
+<script>
+document.getElementById('run-btn-wrap').innerHTML =
+    '<div class="py-4 border border-border-1 bg-white/[0.02]">' +
+    '<div class="flex items-center justify-center gap-2">' +
+    '<span class="text-status-green text-[14px]">\u2713</span>' +
+    '<span class="text-[14px] text-dim uppercase tracking-[0.2em]">Analysis Complete</span>' +
+    '</div></div>';
+document.getElementById('agent-activity').style.display = 'none';
+</script>
+
+<div class="fade-in font-mono">
+    <div class="text-center mb-8">
+        <button onclick="var a=document.getElementById('agent-activity');var h=a.style.display==='none';a.style.display=h?'block':'none';this.textContent=h?'\u25be Hide Agent Activity':'\u25b8 Show Agent Activity'"
+                class="text-[11px] text-dim hover:text-muted transition-colors uppercase tracking-widest">
+            &#9656; Show Agent Activity
+        </button>
+    </div>
+
+    <div class="border p-8 mb-8 text-center
+        {% if briefing.shield_status == 'red' %}border-status-red/30 bg-status-red/[0.05]
+        {% elif briefing.shield_status == 'yellow' %}border-status-yellow/30 bg-status-yellow/[0.05]
+        {% else %}border-status-green/30 bg-status-green/[0.05]{% endif %}">
+        <div class="w-4 h-4 mx-auto mb-3
+            {% if briefing.shield_status == 'red' %}bg-status-red
+            {% elif briefing.shield_status == 'yellow' %}bg-status-yellow
+            {% else %}bg-status-green{% endif %}"></div>
+        <div class="text-[18px] font-bold uppercase tracking-[0.2em] mb-2
+            {% if briefing.shield_status == 'red' %}text-status-red
+            {% elif briefing.shield_status == 'yellow' %}text-status-yellow
+            {% else %}text-status-green{% endif %}">
+            SHIELD: {{ briefing.shield_status | upper }}
+        </div>
+        <p class="text-muted text-[13px] max-w-md mx-auto">{{ briefing.status_summary }}</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div>
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
+                <span class="text-accent mr-1.5">//</span>IMMEDIATE ACTIONS
+            </div>
+            <div class="border border-border-1 divide-y divide-border-1">
+                {% for action in briefing.immediate_actions %}
+                <div class="px-4 py-2.5 flex items-start gap-2.5 text-[12px]">
+                    <span class="text-accent">{{ loop.index }}.</span>
+                    <span class="text-white">{{ action }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div>
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
+                <span class="text-accent mr-1.5">//</span>CORRELATIONS
+            </div>
+            <div class="border border-border-1 divide-y divide-border-1">
+                {% for c in briefing.correlations %}
+                <div class="px-4 py-2.5 flex items-start gap-2 text-[12px]">
+                    <span class="text-accent mt-0.5">~</span>
+                    <span class="text-muted">{{ c }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
+        <span class="text-accent mr-1.5">//</span>FINDINGS ({{ briefing.findings | length }})
+    </div>
+    <div class="border border-border-1 divide-y divide-border-1">
+        {% for f in briefing.findings %}
+        <details class="group">
+            <summary class="px-4 py-2.5 flex items-center gap-2.5 cursor-pointer hover:bg-white/[0.02] transition-colors">
+                <span class="w-2 h-2 {{ severity_colors[f.severity] }} flex-shrink-0"></span>
+                <span class="text-[12px] text-white flex-1">{{ f.title }}</span>
+                <span class="text-[11px] text-dim">{{ f.relevance_score }}</span>
+                <svg class="w-3 h-3 text-dim transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </summary>
+            <div class="px-4 pb-3 pt-2 border-t border-border-1">
+                <p class="text-muted text-[12px] mb-2">{{ f.explanation }}</p>
+                <div class="space-y-1">
+                    {% for action in f.action_items %}
+                    <div class="flex items-start gap-2 text-[12px]">
+                        <span class="text-accent mt-0.5">›</span>
+                        <span class="text-gray-300">{{ action }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </details>
+        {% endfor %}
+    </div>
+</div>

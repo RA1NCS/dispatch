@@ -1,16 +1,44 @@
 {% extends "base.html" %}
-{% block title %}Guardian{% endblock %}
+{% block title %}Profiles - Guardian{% endblock %}
 
 {% block content %}
 <div class="fade-in font-mono">
-    <div class="mb-10">
-        <h1 class="font-bold text-white text-xl tracking-tight mb-2">GUARDIAN</h1>
-        <p class="text-dim text-[13px]">Personalized threat analysis for your digital footprint.</p>
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="font-bold text-white tracking-tight">PROFILES</h1>
+        {% if profiles %}
+        <a href="/" class="text-[12px] text-accent/70 hover:text-accent transition-colors">&larr; Back to Analysis</a>
+        {% endif %}
     </div>
 
-    <div>
-        <div class="text-[11px] text-dim uppercase tracking-widest mb-3"><span class="text-accent mr-1.5">//</span>CREATE THREAT PROFILE</div>
-        <form action="/profiles" method="post" class="border border-border-1 divide-y divide-border-1">
+    {% if profiles %}
+    <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
+        <span class="text-accent mr-1.5">//</span>YOUR PROFILES
+    </div>
+    <div class="border border-border-1 divide-y divide-border-1 mb-10">
+        {% for p in profiles %}
+        <div class="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors">
+            <a href="/profiles/{{ p.id }}" class="flex items-center gap-4 flex-1">
+                <span class="text-accent text-[14px] font-bold">#{{ p.id }}</span>
+                <div>
+                    <div class="text-[13px] text-white">{{ region_labels[p.region] }}</div>
+                    <div class="text-[11px] text-dim mt-0.5">{{ work_labels[p.work_situation] }} · {{ p.services|length }} services</div>
+                </div>
+            </a>
+            <div class="flex items-center gap-4">
+                <a href="/profiles/{{ p.id }}/edit" class="text-[11px] text-dim hover:text-accent transition-colors uppercase tracking-widest">Edit</a>
+                <a href="/profiles/{{ p.id }}" class="text-[11px] text-accent/70 hover:text-accent transition-colors uppercase tracking-widest">Analyze</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <details class="group">
+        <summary class="flex items-center gap-2 cursor-pointer text-[11px] text-dim uppercase tracking-widest mb-3 hover:text-muted transition-colors">
+            <svg class="w-3 h-3 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <span class="text-dim mr-1">//</span>CREATE NEW PROFILE
+        </summary>
+        <form action="/profiles" method="post" class="border border-border-1 divide-y divide-border-1 mt-3 opacity-80">
             <div class="px-5 py-4">
                 <label class="block text-[11px] text-dim uppercase tracking-widest mb-2">Region</label>
                 <div class="custom-select">
@@ -74,11 +102,11 @@
             </div>
 
             <div class="px-5 py-4">
-                <button type="submit" class="w-full bg-accent/10 border border-accent/30 hover:bg-accent/20 text-accent text-[13px] py-2.5 transition-colors uppercase tracking-widest">
+                <button type="submit" class="w-full border border-border-2 hover:border-accent/30 hover:bg-accent/[0.05] text-dim hover:text-accent text-[13px] py-2.5 transition-colors uppercase tracking-widest">
                     Create Profile
                 </button>
             </div>
         </form>
-    </div>
+    </details>
 </div>
 {% endblock %}

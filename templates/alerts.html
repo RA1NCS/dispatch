@@ -7,7 +7,7 @@
         <div class="flex items-center justify-between">
             <h1 class="font-bold text-white text-xl tracking-tight">THREAT FEED</h1>
             {% if active_severity or active_category or active_service %}
-            <a href="/alerts" class="text-[11px] text-dim hover:text-status-cyan transition-colors uppercase tracking-widest">Clear filters</a>
+            <a href="/alerts" class="text-[11px] text-dim hover:text-accent transition-colors uppercase tracking-widest">Clear filters</a>
             {% endif %}
         </div>
         <p class="text-dim text-[13px] mt-2">Real-time security alerts filtered for your threat landscape.</p>
@@ -15,17 +15,17 @@
 
     <div class="mb-6 space-y-4">
         <div>
-            <div class="text-[11px] text-dim uppercase tracking-widest mb-2"><span class="text-status-cyan mr-1.5">//</span>SEVERITY</div>
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-2"><span class="text-accent mr-1.5">//</span>SEVERITY</div>
             <div class="flex flex-wrap gap-1.5">
                 <a href="{{ filter_url(category=active_category, service=active_service) }}"
                    class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
-                   {% if not active_severity %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                   {% if not active_severity %}border-accent/30 text-accent bg-accent/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
                     ALL
                 </a>
                 {% for sev in severities %}
                 <a href="{{ filter_url(severity=sev, category=active_category, service=active_service) }}"
                    class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
-                   {% if active_severity == sev %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                   {% if active_severity == sev %}border-accent/30 text-accent bg-accent/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
                     {{ sev }}
                 </a>
                 {% endfor %}
@@ -33,17 +33,17 @@
         </div>
 
         <div>
-            <div class="text-[11px] text-dim uppercase tracking-widest mb-2"><span class="text-status-cyan mr-1.5">//</span>CATEGORY</div>
+            <div class="text-[11px] text-dim uppercase tracking-widest mb-2"><span class="text-accent mr-1.5">//</span>CATEGORY</div>
             <div class="flex flex-wrap gap-1.5">
                 <a href="{{ filter_url(severity=active_severity, service=active_service) }}"
                    class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
-                   {% if not active_category %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                   {% if not active_category %}border-accent/30 text-accent bg-accent/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
                     ALL
                 </a>
                 {% for cat in categories %}
                 <a href="{{ filter_url(severity=active_severity, category=cat, service=active_service) }}"
                    class="text-[11px] px-3 py-1.5 border uppercase tracking-widest transition-colors
-                   {% if active_category == cat %}border-status-cyan/30 text-status-cyan bg-status-cyan/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
+                   {% if active_category == cat %}border-accent/30 text-accent bg-accent/[0.06]{% else %}border-border-1 text-dim hover:text-white hover:border-border-2{% endif %}">
                     {{ category_labels[cat] }}
                 </a>
                 {% endfor %}
@@ -53,7 +53,7 @@
 
     <div>
         <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
-            <span class="text-status-cyan mr-1.5">//</span>ALERTS
+            <span class="text-accent mr-1.5">//</span>ALERTS
             <span class="text-border-2 ml-1">&middot;</span>
             <span class="ml-1">{{ alerts|length }} found</span>
         </div>

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Audit Log - Guardian{% endblock %}
+
+{% block content %}
+<div class="fade-in font-mono">
+    <div class="flex items-center gap-3 mb-8 text-[13px]">
+        <h1 class="font-bold text-white tracking-tight">AUDIT LOG</h1>
+        <span class="text-dim">{{ entries | length }} entries</span>
+    </div>
+
+    <div class="border border-border-1">
+        <div class="grid grid-cols-12 gap-2 px-5 py-2.5 text-[11px] text-dim uppercase tracking-widest border-b border-border-1">
+            <span class="col-span-2">Time</span>
+            <span class="col-span-2">Tool</span>
+            <span class="col-span-3">Input</span>
+            <span class="col-span-3">Output</span>
+            <span class="col-span-2">Model</span>
+        </div>
+        {% for e in entries %}
+        <div class="grid grid-cols-12 gap-2 px-5 py-2.5 text-[12px] border-b border-border-1 last:border-b-0">
+            <span class="text-dim col-span-2 truncate">{{ e.timestamp[11:19] }}</span>
+            <span class="text-accent col-span-2 truncate">{{ e.tool_name }}</span>
+            <span class="text-muted col-span-3 truncate">{{ e.input_summary }}</span>
+            <span class="text-muted col-span-3 truncate">{{ e.output_summary }}</span>
+            <span class="text-dim col-span-2 truncate">{{ e.model_used }}</span>
+        </div>
+        {% endfor %}
+        {% if not entries %}
+        <div class="px-5 py-8 text-center text-dim text-[13px]">
+            No audit entries yet. Run an analysis to generate entries.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
