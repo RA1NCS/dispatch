@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+python-dotenv
+pydantic-ai
+anthropic
+google-genai
+httpx
+pyyaml
+pytest
+pytest-asyncio
