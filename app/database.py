@@ -15,7 +15,8 @@ def get_connection():
 
 def init_db():
     conn = get_connection()
-    conn.executescript("""
+    conn.executescript(
+        """
         CREATE TABLE IF NOT EXISTS profiles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             region TEXT NOT NULL,
@@ -34,7 +35,8 @@ def init_db():
             latency_ms INTEGER,
             model_used TEXT
         );
-    """)
+    """
+    )
     conn.close()
 
 
@@ -67,7 +69,14 @@ def update_profile(profile_id, region, services, work_situation, primary_concern
     conn = get_connection()
     conn.execute(
         "UPDATE profiles SET region = ?, services = ?, work_situation = ?, primary_concern = ?, updated_at = ? WHERE id = ?",
-        (region, json.dumps(services), work_situation, primary_concern, now, profile_id),
+        (
+            region,
+            json.dumps(services),
+            work_situation,
+            primary_concern,
+            now,
+            profile_id,
+        ),
     )
     conn.commit()
     conn.close()

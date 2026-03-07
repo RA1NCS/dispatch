@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -14,6 +13,9 @@ from app.database import (
     update_profile,
 )
 from app.schemas import (
+    ALERT_CATEGORIES,
+    ALERT_SEVERITIES,
+    CATEGORY_LABELS,
     CONCERN_LABELS,
     REGION_LABELS,
     SERVICE_LABELS,
@@ -23,6 +25,7 @@ from app.schemas import (
     VALID_WORK_SITUATIONS,
     WORK_LABELS,
     ProfileCreate,
+    load_alerts,
 )
 
 load_dotenv()
@@ -30,15 +33,6 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-ALERT_SEVERITIES = ["critical", "high", "medium", "low"]
-ALERT_CATEGORIES = ["phishing", "data_breach", "vulnerability", "malware", "scam"]
-CATEGORY_LABELS = {
-    "phishing": "Phishing",
-    "data_breach": "Data Breach",
-    "vulnerability": "Vulnerability",
-    "malware": "Malware",
-    "scam": "Scam",
-}
 SEVERITY_COLORS = {
     "critical": "bg-status-red",
     "high": "bg-status-orange",
@@ -50,16 +44,6 @@ SEVERITY_COLORS = {
 def build_filter_url(**params):
     qs = "&".join(f"{k}={v}" for k, v in params.items() if v)
     return f"/alerts?{qs}" if qs else "/alerts"
-
-
-templates.env.globals["filter_url"] = build_filter_url
-
-app = FastAPI(title="Guardian", version="0.1.0")
-
-
-@app.on_event("startup")
-def startup():
-    init_db()
 
 
 def form_context():
@@ -75,9 +59,14 @@ def form_context():
     }
 
 
-def load_alerts():
-    with open(BASE_DIR / "data" / "alerts_seed.json") as f:
-        return sorted(json.load(f), key=lambda a: a["date"], reverse=True)
+templates.env.globals["filter_url"] = build_filter_url
+
+app = FastAPI(title="Guardian", version="0.1.0")
+
+
+@app.on_event("startup")
+def startup():
+    init_db()
 
 
 @app.get("/health")
