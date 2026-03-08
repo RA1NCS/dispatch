@@ -1,7 +1,6 @@
 import hashlib
 import json
 import os
-import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -129,7 +128,7 @@ async def triage_alerts(ctx: RunContext[ProfileDeps], alerts: list[dict]) -> lis
     log_audit(
         "triage_alerts",
         f"{len(alerts)} alerts for profile #{profile['id']}",
-        f"{len(result.output)} results, top score={max(r.relevance_score for r in result.output):.1f}",
+        f"{len(result.output)} results, top score={max((r.relevance_score for r in result.output), default=0):.1f}",
         latency,
         TRIAGE_MODEL,
     )

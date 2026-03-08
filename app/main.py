@@ -324,8 +324,11 @@ async def analyze_stream(profile_id: int):
             await queue.put((event_type, data))
 
         async def run():
-            result = await run_analysis(profile, event_callback=callback)
-            await queue.put(("done", result))
+            try:
+                result = await run_analysis(profile, event_callback=callback)
+                await queue.put(("done", result))
+            except Exception as e:
+                await queue.put(("error", str(e)))
 
         asyncio.create_task(run())
 
@@ -340,6 +343,17 @@ async def analyze_stream(profile_id: int):
                 )
                 yield format_sse("timeline", FREEZE_TIMERS)
                 yield format_sse("briefing", html)
+                yield format_sse("close", "")
+                break
+            if event_type == "error":
+                error_html = (
+                    FREEZE_TIMERS
+                    + '<div class="flex items-center gap-2.5 px-4 py-2.5 font-mono text-[12px] timeline-enter">'
+                    + '<span class="text-status-red">✗</span>'
+                    + f'<span class="text-status-red">Analysis failed: {data}</span>'
+                    + "</div>"
+                )
+                yield format_sse("timeline", error_html)
                 yield format_sse("close", "")
                 break
             yield format_sse("timeline", render_tool_event(event_type, data))
@@ -412,7 +426,7 @@ def password_page(request: Request):
 async def password_check(
     request: Request, password: str = Form(...), mode: str = Form("auto")
 ):
-    if not password:
+    if not password.strip():
         return HTMLResponse(
             '<div class="text-dim text-[13px]">Please enter a password to check.</div>'
         )
