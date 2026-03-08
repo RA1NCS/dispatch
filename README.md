@@ -30,7 +30,7 @@ pytest tests/ -v
 
 ### Video
 
-[TODO: Add link after recording]
+[Watch the demo on YouTube](https://youtu.be/cMhSQhtzYa8)
 
 ### Tech Stack
 

@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dispatch - Presentation</title>
+
+    <!-- fonts: exact match to dispatch app -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           VIEWPORT FITTING: MANDATORY BASE STYLES
+           =========================================== */
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            /* snap handled by JS wheel hijack, not CSS */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            padding: var(--slide-padding);
+        }
+        :root {
+            --title-size: clamp(1.5rem, 5vw, 4rem);
+            --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+            --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+            --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+            --small-size: clamp(0.65rem, 1vw, 0.875rem);
+            --slide-padding: clamp(1rem, 4vw, 4rem);
+            --content-gap: clamp(0.5rem, 2vw, 2rem);
+            --element-gap: clamp(0.25rem, 1vw, 1rem);
+        }
+        .card, .container, .content-box {
+            max-width: min(90vw, 1000px);
+            max-height: min(80vh, 700px);
+        }
+        .feature-list, .bullet-list {
+            gap: clamp(0.4rem, 1vh, 1rem);
+        }
+        .feature-list li, .bullet-list li {
+            font-size: var(--body-size);
+            line-height: 1.4;
+        }
+        img, .image-container {
+            max-width: 100%;
+            max-height: min(50vh, 400px);
+            object-fit: contain;
+        }
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 3vw, 2rem);
+                --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+                --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+                --h2-size: clamp(1rem, 3vw, 1.75rem);
+            }
+        }
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+                --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+                --title-size: clamp(1.1rem, 4vw, 2rem);
+                --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            }
+            .nav-dots, .keyboard-hint, .decorative { display: none; }
+        }
+        @media (max-height: 500px) {
+            :root {
+                --slide-padding: clamp(0.4rem, 2vw, 1rem);
+                --title-size: clamp(1rem, 3.5vw, 1.5rem);
+                --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+                --body-size: clamp(0.65rem, 1vw, 0.85rem);
+            }
+        }
+        @media (max-width: 600px) {
+            :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+
+        /* ===========================================
+           DISPATCH THEME
+           exact colors, fonts, and atmosphere from the app
+           =========================================== */
+        :root {
+            --bg: #07080a;
+            --surface-1: #0d0e12;
+            --surface-2: #131417;
+            --surface-3: #1a1b1f;
+            --accent-r: 6;
+            --accent-g: 182;
+            --accent-b: 212;
+            --accent: rgb(6, 182, 212);
+            --accent-glow: rgba(6, 182, 212, 0.3);
+            --accent-dim: rgba(6, 182, 212, 0.6);
+            --text-primary: #e4e4e7;
+            --text-muted: #8b8c94;
+            --text-dim: #5a5b63;
+            --border-1: rgba(255, 255, 255, 0.07);
+            --border-2: rgba(255, 255, 255, 0.12);
+            --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+            --font-sans: 'Inter', system-ui, sans-serif;
+            --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+        }
+
+        /* ===========================================
+           STARFIELD: 3-layer animated stars
+           box-shadow technique, twinkling + drift
+           =========================================== */
+        .starfield {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .stars-sm, .stars-md, .stars-lg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 1px;
+            height: 1px;
+            border-radius: 50%;
+        }
+
+        /* small stars: most numerous, dimmest, fastest twinkle */
+        .stars-sm {
+            animation: twinkle-a 4s ease-in-out infinite, drift 90s linear infinite;
+            box-shadow:
+                12vw 8vh 0 0.3px rgba(255,255,255,0.15),
+                35vw 14vh 0 0.3px rgba(255,255,255,0.10),
+                58vw 5vh 0 0.4px rgba(255,255,255,0.12),
+                82vw 19vh 0 0.3px rgba(255,255,255,0.18),
+                7vw 32vh 0 0.3px rgba(255,255,255,0.10),
+                45vw 28vh 0 0.5px rgba(255,255,255,0.14),
+                68vw 41vh 0 0.3px rgba(255,255,255,0.12),
+                23vw 55vh 0 0.4px rgba(255,255,255,0.10),
+                91vw 48vh 0 0.3px rgba(255,255,255,0.16),
+                52vw 63vh 0 0.3px rgba(255,255,255,0.12),
+                15vw 75vh 0 0.5px rgba(255,255,255,0.10),
+                76vw 72vh 0 0.3px rgba(255,255,255,0.15),
+                38vw 85vh 0 0.4px rgba(255,255,255,0.12),
+                88vw 91vh 0 0.3px rgba(255,255,255,0.10),
+                5vw 95vh 0 0.3px rgba(255,255,255,0.14);
+        }
+
+        /* medium stars: fewer, brighter, offset twinkle */
+        .stars-md {
+            animation: twinkle-b 6s ease-in-out infinite 1.5s, drift 75s linear infinite;
+            box-shadow:
+                28vw 12vh 0 0.8px rgba(255,255,255,0.25),
+                72vw 22vh 0 1px rgba(255,255,255,0.20),
+                48vw 38vh 0 0.8px rgba(255,255,255,0.30),
+                8vw 52vh 0 1px rgba(255,255,255,0.15),
+                85vw 45vh 0 0.8px rgba(255,255,255,0.35),
+                55vw 68vh 0 1px rgba(255,255,255,0.20),
+                18vw 78vh 0 0.8px rgba(255,255,255,0.25),
+                65vw 82vh 0 1px rgba(255,255,255,0.18),
+                92vw 65vh 0 0.8px rgba(255,255,255,0.30),
+                40vw 92vh 0 1px rgba(255,255,255,0.22);
+        }
+
+        /* large stars: rarest, brightest, reverse drift for parallax */
+        .stars-lg {
+            animation: twinkle-c 8s ease-in-out infinite 3s, drift 60s linear infinite reverse;
+            box-shadow:
+                20vw 18vh 0 1.5px rgba(255,255,255,0.40),
+                62vw 10vh 0 2px rgba(255,255,255,0.30),
+                78vw 55vh 0 1.5px rgba(255,255,255,0.50),
+                35vw 70vh 0 2px rgba(255,255,255,0.35),
+                90vw 82vh 0 1.5px rgba(255,255,255,0.45),
+                10vw 42vh 0 2px rgba(255,255,255,0.60);
+        }
+
+        @keyframes twinkle-a {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        @keyframes twinkle-b {
+            0%, 100% { opacity: 1; }
+            40% { opacity: 0.35; }
+            70% { opacity: 0.8; }
+        }
+        @keyframes twinkle-c {
+            0%, 100% { opacity: 1; }
+            30% { opacity: 0.5; }
+            60% { opacity: 0.3; }
+            80% { opacity: 0.7; }
+        }
+        @keyframes drift {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-30px); }
+        }
+
+        /* nebula: layered radial gradients for atmospheric depth */
+        .nebula {
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 800px 600px at 15% 25%, rgba(6, 182, 212, 0.10) 0%, transparent 70%),
+                radial-gradient(ellipse 600px 500px at 75% 60%, rgba(26, 16, 64, 0.08) 0%, transparent 65%),
+                radial-gradient(ellipse 700px 500px at 80% 75%, rgba(6, 182, 212, 0.08) 0%, transparent 65%),
+                radial-gradient(ellipse 600px 300px at 45% 90%, rgba(6, 182, 212, 0.05) 0%, transparent 60%);
+        }
+
+        /* ===========================================
+           SLIDE TYPOGRAPHY AND LAYOUT
+           =========================================== */
+        .slide {
+            z-index: 1;
+        }
+
+        .slide-content {
+            align-items: center;
+            text-align: center;
+            padding-left: clamp(2rem, 8vw, 8rem);
+            padding-right: clamp(2rem, 8vw, 8rem);
+        }
+
+        /* large title: JetBrains Mono, bold, tracked */
+        .slide-title {
+            font-family: var(--font-mono);
+            font-size: var(--title-size);
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+        }
+
+        /* subtitle: Inter, muted */
+        .slide-subtitle {
+            font-family: var(--font-sans);
+            font-size: clamp(0.85rem, 1.8vw, 1.2rem);
+            color: var(--text-muted);
+            line-height: 1.5;
+            max-width: 600px;
+        }
+
+        /* accent marker lines (// prefix) */
+        .accent-line {
+            font-family: var(--font-mono);
+            font-size: clamp(0.8rem, 1.4vw, 1.05rem);
+            color: var(--text-muted);
+            line-height: 1.6;
+            text-align: left;
+        }
+        .accent-line .marker {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* accent-colored text */
+        .text-accent {
+            color: var(--accent);
+        }
+
+        /* dim text for future work items */
+        .text-dim {
+            color: var(--text-dim);
+        }
+        .text-muted {
+            color: var(--text-muted);
+        }
+
+        /* label: uppercase tracking like dispatch navbar */
+        .label {
+            font-family: var(--font-mono);
+            font-size: clamp(0.6rem, 0.9vw, 0.7rem);
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        /* architecture diagram */
+        .arch-image {
+            max-height: min(68vh, 560px);
+            border-radius: 12px;
+            border: 1px solid var(--border-2);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* callout row below diagram */
+        .callout-row {
+            display: flex;
+            gap: clamp(1rem, 3vw, 3rem);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .callout {
+            font-family: var(--font-mono);
+            font-size: clamp(0.65rem, 1vw, 0.8rem);
+            color: var(--text-dim);
+            padding: clamp(0.3rem, 0.6vw, 0.5rem) clamp(0.6rem, 1.2vw, 1rem);
+            border: 1px solid var(--border-1);
+            background: var(--surface-2);
+        }
+
+        /* closing line */
+        .closing {
+            font-family: var(--font-sans);
+            font-size: clamp(0.75rem, 1.2vw, 0.95rem);
+            color: var(--text-dim);
+            border-top: 1px solid var(--border-1);
+            padding-top: clamp(0.8rem, 1.5vw, 1.2rem);
+            max-width: 500px;
+        }
+
+        /* shield logo svg */
+        .shield-logo {
+            animation: shieldGlow 3s ease-in-out infinite;
+        }
+        @keyframes shieldGlow {
+            0%, 100% { filter: drop-shadow(0 0 3px rgba(6, 182, 212, 0.3)); }
+            50% { filter: drop-shadow(0 0 12px rgba(6, 182, 212, 0.7)); }
+        }
+
+        /* ===========================================
+           REVEAL ANIMATIONS
+           staggered entrance on slide visibility
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.6s var(--ease-out-expo),
+                        transform 0.6s var(--ease-out-expo);
+        }
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .reveal:nth-child(1) { transition-delay: 0.05s; }
+        .reveal:nth-child(2) { transition-delay: 0.15s; }
+        .reveal:nth-child(3) { transition-delay: 0.25s; }
+        .reveal:nth-child(4) { transition-delay: 0.35s; }
+        .reveal:nth-child(5) { transition-delay: 0.45s; }
+        .reveal:nth-child(6) { transition-delay: 0.55s; }
+        .reveal:nth-child(7) { transition-delay: 0.65s; }
+
+        /* ===========================================
+           PROGRESS BAR
+           thin accent line at top of viewport
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 2px;
+            background: var(--accent);
+            z-index: 100;
+            width: 0%;
+            transition: width 0.3s ease-out;
+        }
+
+        /* ===========================================
+           NAV DOTS
+           right-side vertical dots matching dispatch style
+           =========================================== */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.8rem, 2vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .nav-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+            padding: 0;
+        }
+        .nav-dot:hover {
+            background: var(--text-muted);
+            transform: scale(1.4);
+        }
+        .nav-dot.active {
+            background: var(--accent);
+            transform: scale(1.3);
+        }
+
+        /* ===========================================
+           KEYBOARD HINT
+           bottom-center, fades out after 3s
+           =========================================== */
+        .keyboard-hint {
+            position: fixed;
+            bottom: clamp(1rem, 2vh, 1.5rem);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            font-family: var(--font-mono);
+            font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 1;
+            transition: opacity 1s ease;
+        }
+        .keyboard-hint.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ===========================================
+           SLIDE NUMBER
+           bottom-left, mono, dim
+           =========================================== */
+        .slide-number {
+            position: fixed;
+            bottom: clamp(1rem, 2vh, 1.5rem);
+            left: clamp(1rem, 2vw, 1.5rem);
+            z-index: 100;
+            font-family: var(--font-mono);
+            font-size: clamp(0.55rem, 0.8vw, 0.65rem);
+            color: var(--text-dim);
+            letter-spacing: 0.05em;
+        }
+
+        /* ===========================================
+           AMBIENT GLOW
+           per-slide accent radial behind content
+           =========================================== */
+        .ambient-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: clamp(400px, 60vw, 900px);
+            height: clamp(300px, 50vh, 600px);
+            background: radial-gradient(ellipse, rgba(6, 182, 212, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .slide-content {
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- starfield: identical to dispatch app -->
+    <div class="starfield">
+        <div class="stars-sm"></div>
+        <div class="stars-md"></div>
+        <div class="stars-lg"></div>
+        <div class="nebula"></div>
+    </div>
+
+    <!-- progress bar -->
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- nav dots (generated by JS) -->
+    <nav class="nav-dots" id="navDots" aria-label="Slide navigation"></nav>
+
+    <!-- slide number -->
+    <div class="slide-number" id="slideNumber">01 / 05</div>
+
+    <!-- keyboard hint -->
+    <div class="keyboard-hint" id="keyboardHint">arrow keys or scroll to navigate</div>
+
+    <!-- ===========================================
+         SLIDE 1: THE ALERT NOISE PROBLEM
+         stark, clean. just title + one line.
+         =========================================== -->
+    <section class="slide" id="slide-1">
+        <div class="ambient-glow"></div>
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <h1 class="slide-title reveal" style="letter-spacing: 0.04em;">THE ALERT NOISE PROBLEM</h1>
+            <p class="slide-subtitle reveal">Dozens of threats every week. Which ones actually matter to you?</p>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 2: DISPATCH
+         logo + tagline + three // accent lines
+         =========================================== -->
+    <section class="slide" id="slide-2">
+        <div class="ambient-glow"></div>
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <!-- shield logo + DISPATCH text -->
+            <div class="reveal" style="display: flex; align-items: center; gap: clamp(0.5rem, 1vw, 0.8rem);">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="shield-logo text-accent" style="color: var(--accent);">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span style="font-family: var(--font-mono); font-size: clamp(1.2rem, 2.5vw, 1.8rem); font-weight: 700; color: var(--accent); letter-spacing: 0.06em;">DISPATCH</span>
+            </div>
+
+            <!-- tagline -->
+            <p class="slide-subtitle reveal" style="margin-top: clamp(0.2rem, 0.5vw, 0.4rem);">
+                Personalized threat analysis for your digital footprint.
+            </p>
+
+            <!-- three accent lines -->
+            <div class="reveal" style="display: flex; flex-direction: column; gap: clamp(0.5rem, 1vh, 0.8rem); margin-top: clamp(0.8rem, 1.5vw, 1.2rem);">
+                <p class="accent-line"><span class="marker">//</span> Your region, your services, your concerns</p>
+                <p class="accent-line"><span class="marker">//</span> Every alert scored for personal relevance</p>
+                <p class="accent-line"><span class="marker">//</span> A briefing with actions, not a wall of data</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 3: ARCHITECTURE
+         diagram fills most of slide, label + callouts
+         =========================================== -->
+    <section class="slide" id="slide-3">
+        <div class="ambient-glow"></div>
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <span class="label reveal">// how it works</span>
+            <img src="../docs/architecture.png" alt="Dispatch Architecture Diagram" class="arch-image reveal">
+            <div class="callout-row reveal">
+                <div class="callout">Gemini Flash: orchestration + briefing synthesis</div>
+                <div class="callout">Gemini Flash-Lite: alert classification via agent delegation</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 4: GUARDRAILS
+         responsible AI, four // lines
+         =========================================== -->
+    <section class="slide" id="slide-4">
+        <div class="ambient-glow"></div>
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <h2 class="slide-title reveal" style="font-size: var(--h2-size); letter-spacing: 0.04em;">GUARDRAILS</h2>
+            <div class="reveal" style="display: flex; flex-direction: column; gap: clamp(0.6rem, 1.2vh, 1rem); margin-top: clamp(0.5rem, 1vw, 0.8rem);">
+                <p class="accent-line"><span class="marker">//</span> Passwords never touch any AI model</p>
+                <p class="accent-line"><span class="marker">//</span> Every AI feature has a complete rule-based fallback</p>
+                <p class="accent-line"><span class="marker">//</span> Every tool call logged with model, input, output, latency</p>
+                <p class="accent-line"><span class="marker">//</span> 55 automated tests, all running fully offline</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===========================================
+         SLIDE 5: FUTURE WORK + CLOSE
+         muted lines, closing thanks
+         =========================================== -->
+    <section class="slide" id="slide-5">
+        <div class="ambient-glow"></div>
+        <div class="slide-content" style="gap: var(--content-gap);">
+            <h2 class="slide-title reveal" style="font-size: var(--h2-size); letter-spacing: 0.04em;">FUTURE WORK</h2>
+            <div class="reveal" style="display: flex; flex-direction: column; gap: clamp(0.5rem, 1vh, 0.8rem); margin-top: clamp(0.3rem, 0.8vw, 0.6rem);">
+                <p class="accent-line" style="color: var(--text-dim);"><span class="marker">//</span> Live threat feeds from NVD and CISA</p>
+                <p class="accent-line" style="color: var(--text-dim);"><span class="marker">//</span> Zip code level localization</p>
+                <p class="accent-line" style="color: var(--text-dim);"><span class="marker">//</span> Historical briefing comparison over time</p>
+            </div>
+            <p class="closing reveal">Thanks for reviewing. I had a lot of fun building this.</p>
+        </div>
+    </section>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           magnetic snap: any scroll input locks to next/prev slide
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.totalSlides = this.slides.length;
+                this.isAnimating = false;
+                this.cooldown = 600;
+
+                this.setupIntersectionObserver();
+                this.setupWheelSnap();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupProgressBar();
+                this.setupNavDots();
+                this.hideKeyboardHint();
+            }
+
+            /* intersection observer: add .visible class for reveal animations */
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('visible');
+                            const index = Array.from(this.slides).indexOf(entry.target);
+                            this.currentSlide = index;
+                            this.updateProgressBar();
+                            this.updateNavDots();
+                            this.updateSlideNumber();
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            /* wheel hijack: any scroll delta snaps magnetically to next/prev */
+            setupWheelSnap() {
+                document.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    if (this.isAnimating) return;
+
+                    if (e.deltaY > 0 && this.currentSlide < this.totalSlides - 1) {
+                        this.goToSlide(this.currentSlide + 1);
+                    } else if (e.deltaY < 0 && this.currentSlide > 0) {
+                        this.goToSlide(this.currentSlide - 1);
+                    }
+                }, { passive: false });
+            }
+
+            /* keyboard: arrows, space, page up/down */
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (this.isAnimating) return;
+                    switch(e.key) {
+                        case 'ArrowDown':
+                        case 'ArrowRight':
+                        case ' ':
+                        case 'PageDown':
+                            e.preventDefault();
+                            this.goToSlide(Math.min(this.currentSlide + 1, this.totalSlides - 1));
+                            break;
+                        case 'ArrowUp':
+                        case 'ArrowLeft':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.goToSlide(Math.max(this.currentSlide - 1, 0));
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.goToSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.goToSlide(this.totalSlides - 1);
+                            break;
+                    }
+                });
+            }
+
+            /* touch: swipe up/down for mobile */
+            setupTouchNav() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                document.addEventListener('touchend', (e) => {
+                    if (this.isAnimating) return;
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0) {
+                            this.goToSlide(Math.min(this.currentSlide + 1, this.totalSlides - 1));
+                        } else {
+                            this.goToSlide(Math.max(this.currentSlide - 1, 0));
+                        }
+                    }
+                }, { passive: true });
+            }
+
+            /* progress bar */
+            setupProgressBar() {
+                this.progressBar = document.getElementById('progressBar');
+                this.updateProgressBar();
+            }
+
+            updateProgressBar() {
+                const progress = ((this.currentSlide + 1) / this.totalSlides) * 100;
+                this.progressBar.style.width = progress + '%';
+            }
+
+            /* nav dots */
+            setupNavDots() {
+                const container = document.getElementById('navDots');
+                this.slides.forEach((_, i) => {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
+                    dot.addEventListener('click', () => this.goToSlide(i));
+                    container.appendChild(dot);
+                });
+                this.dots = container.querySelectorAll('.nav-dot');
+            }
+
+            updateNavDots() {
+                this.dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+
+            /* slide number */
+            updateSlideNumber() {
+                const num = document.getElementById('slideNumber');
+                const current = String(this.currentSlide + 1).padStart(2, '0');
+                const total = String(this.totalSlides).padStart(2, '0');
+                num.textContent = current + ' / ' + total;
+            }
+
+            /* magnetic navigation: scroll to slide + lock during animation */
+            goToSlide(index) {
+                if (index === this.currentSlide) return;
+                this.isAnimating = true;
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => { this.isAnimating = false; }, this.cooldown);
+            }
+
+            /* hide keyboard hint after 4 seconds */
+            hideKeyboardHint() {
+                setTimeout(() => {
+                    document.getElementById('keyboardHint').classList.add('hidden');
+                }, 4000);
+            }
+        }
+
+        /* init on DOM ready */
+        document.addEventListener('DOMContentLoaded', () => {
+            new SlidePresentation();
+        });
+    </script>
+</body>
+</html>
