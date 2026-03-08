@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Guardian{% endblock %}
+{% block title %}Dispatch{% endblock %}
 
 {% block content %}
-<div id="hero-wrap" class="fade-in font-mono space-glow pt-[12vh] transition-[padding] duration-[400ms] ease-out">
+<div id="hero-wrap" class="fade-in font-mono space-glow {{ 'pt-0' if briefing else 'pt-[12vh]' }} transition-[padding] duration-[400ms] ease-out">
     <div class="text-center mb-10">
         <a href="/profiles" class="inline-flex items-center gap-2.5 px-4 py-2 border border-accent/20 bg-accent/[0.04] hover:bg-accent/[0.10] hover:border-accent/40 transition-colors">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-accent"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -13,6 +13,14 @@
     </div>
 
     <div id="run-btn-wrap" class="max-w-lg mx-auto mb-8">
+        {% if briefing %}
+        <div class="py-4 border border-border-1 bg-white/[0.02]">
+            <div class="flex items-center justify-center gap-2">
+                <span class="text-status-green text-[14px]">&#10003;</span>
+                <span class="text-[14px] text-dim uppercase tracking-[0.2em]">Analysis Complete</span>
+            </div>
+        </div>
+        {% else %}
         <div class="relative">
             <div class="btn-ghost"></div>
             <div class="btn-ghost" style="animation-delay: 0.8s"></div>
@@ -27,8 +35,15 @@
                 </div>
             </a>
         </div>
+        {% endif %}
     </div>
 
-    <div id="analysis-area"></div>
+    <div id="analysis-area">
+        {% if briefing %}
+        {% with cached=true %}
+        {% include "_briefing.html" %}
+        {% endwith %}
+        {% endif %}
+    </div>
 </div>
 {% endblock %}

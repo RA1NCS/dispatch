@@ -15,7 +15,6 @@ from app.agent import (
     analyze_phishing,
     analyze_phishing_api,
     check_password,
-    check_password_api,
     run_analysis,
     toggle_ai_mode,
 )
@@ -77,15 +76,21 @@ def form_context():
 
 
 templates.env.globals["filter_url"] = build_filter_url
+templates.env.globals["ai_mode"] = lambda: agent.ai_mode
 
-app = FastAPI(title="Guardian", version="0.1.0")
+# cached briefing results per profile (cleared on mode toggle)
+_briefing_cache: dict[int, tuple] = {}
+
+app = FastAPI(title="Dispatch", version="0.1.0")
 
 
+# initialize database tables on server start
 @app.on_event("startup")
 def startup():
     init_db()
 
 
+# basic liveness check
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -185,11 +190,16 @@ def view_profile(request: Request, profile_id: int):
     profile = get_profile(profile_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+    cached = _briefing_cache.get(profile_id)
+    briefing, mode_label = cached if cached else (None, None)
     return templates.TemplateResponse(
         "profile.html",
         {
             "request": request,
             "profile": profile,
+            "briefing": briefing,
+            "mode_label": mode_label,
+            "severity_colors": SEVERITY_COLORS,
             **form_context(),
         },
     )
@@ -337,9 +347,12 @@ async def analyze_stream(profile_id: int):
             event_type, data = await queue.get()
             if event_type == "done":
                 briefing = data
+                mode_label = "Gemini Flash" if agent.ai_mode else "Rule-based"
+                _briefing_cache[profile_id] = (briefing, mode_label)
                 html = templates.env.get_template("_briefing.html").render(
                     briefing=briefing,
                     severity_colors=SEVERITY_COLORS,
+                    mode_label=mode_label,
                 )
                 yield format_sse("timeline", FREEZE_TIMERS)
                 yield format_sse("briefing", html)
@@ -365,9 +378,10 @@ async def analyze_stream(profile_id: int):
     )
 
 
-# flips global ai_mode toggle
+# flips global ai_mode toggle and clears cached briefings
 @app.post("/toggle-ai")
 async def toggle_ai():
+    _briefing_cache.clear()
     enabled = toggle_ai_mode()
     return {"enabled": enabled}
 
@@ -394,18 +408,13 @@ async def phishing_analyze(
         return HTMLResponse(
             '<div class="text-dim text-[13px]">Please enter email text to analyze.</div>'
         )
-    current_ai_mode = agent.ai_mode
-
     # route to the right analysis mode
     if mode == "api":
         result = await analyze_phishing_api(email_text)
         mode_label = "Safe Browsing"
-    elif current_ai_mode:
-        result = await analyze_phishing(email_text)
-        mode_label = "AI + Safe Browsing"
     else:
         result = await analyze_phishing(email_text)
-        mode_label = "Offline"
+        mode_label = "AI + Safe Browsing" if agent.ai_mode else "Offline"
     return templates.TemplateResponse(
         "_phishing_result.html",
         {"request": request, "result": result, "mode_label": mode_label},
@@ -422,26 +431,15 @@ def password_page(request: Request):
 
 
 # checks password strength, returns partial result html
+# passwords never leave the server, online adds hibp breach check
 @app.post("/password/check")
-async def password_check(
-    request: Request, password: str = Form(...), mode: str = Form("auto")
-):
+async def password_check(request: Request, password: str = Form(...)):
     if not password.strip():
         return HTMLResponse(
             '<div class="text-dim text-[13px]">Please enter a password to check.</div>'
         )
-    current_ai_mode = agent.ai_mode
-
-    # route to the right analysis mode
-    if mode == "api":
-        result = await check_password_api(password)
-        mode_label = "Breach Scan"
-    elif current_ai_mode:
-        result = await check_password(password)
-        mode_label = "AI + Breach Scan"
-    else:
-        result = await check_password(password)
-        mode_label = "Offline"
+    result = await check_password(password)
+    mode_label = "Breach Scan" if agent.ai_mode else "Offline"
     return templates.TemplateResponse(
         "_password_result.html",
         {"request": request, "result": result, "mode_label": mode_label},

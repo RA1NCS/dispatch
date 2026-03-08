@@ -1,21 +1,27 @@
 <script>
-document.getElementById('run-btn-wrap').innerHTML =
-    '<div class="py-4 border border-border-1 bg-white/[0.02]">' +
-    '<div class="flex items-center justify-center gap-2">' +
-    '<span class="text-status-green text-[14px]">\u2713</span>' +
-    '<span class="text-[14px] text-dim uppercase tracking-[0.2em]">Analysis Complete</span>' +
-    '</div></div>';
-document.getElementById('agent-activity').style.display = 'none';
-var hero = document.getElementById('hero-wrap');
-if (hero) hero.style.paddingTop = '0px';
+var aa = document.getElementById('agent-activity');
+if (aa) {
+    document.getElementById('run-btn-wrap').innerHTML =
+        '<div class="py-4 border border-border-1 bg-white/[0.02]">' +
+        '<div class="flex items-center justify-center gap-2">' +
+        '<span class="text-status-green text-[14px]">\u2713</span>' +
+        '<span class="text-[14px] text-dim uppercase tracking-[0.2em]">Analysis Complete</span>' +
+        '</div></div>';
+    aa.style.display = 'none';
+    var hero = document.getElementById('hero-wrap');
+    if (hero) hero.style.paddingTop = '0px';
+}
 </script>
 
 <div class="fade-in font-mono">
-    <div class="text-center mb-8">
+    <div class="flex items-center justify-center gap-4 mb-8">
+        {% if not cached %}
         <button onclick="var a=document.getElementById('agent-activity');var h=a.style.display==='none';a.style.display=h?'block':'none';this.textContent=h?'\u25be Hide Agent Activity':'\u25b8 Show Agent Activity'"
                 class="text-[11px] text-dim hover:text-muted transition-colors uppercase tracking-widest">
             &#9656; Show Agent Activity
         </button>
+        {% endif %}
+        <span class="text-[11px] text-dim border border-border-1 px-2 py-0.5">{{ mode_label }}</span>
     </div>
 
     <div class="border p-8 mb-8 text-center

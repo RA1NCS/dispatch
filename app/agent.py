@@ -19,7 +19,6 @@ from app.fallback import (
 from app.schemas import (
     URL_PATTERN,
     BriefingOutput,
-    PasswordResult,
     PhishingResult,
     TriageResult,
     load_alerts,
@@ -31,18 +30,19 @@ from app.schemas import (
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 
 # model ids for pydantic-ai agents
-GUARDIAN_MODEL = "google-gla:gemini-3-flash-preview"
+DISPATCH_MODEL = "google-gla:gemini-3-flash-preview"
 TRIAGE_MODEL = "google-gla:gemini-3.1-flash-lite-preview"
 
 # load system prompts from yaml (externalized for easy editing)
 with open(CONFIG_DIR / "prompts.yaml") as f:
     PROMPTS = yaml.safe_load(f)
 
-# deps injected into the guardian agent via RunContext
+# deps injected into the dispatch agent via RunContext
 @dataclass
 class ProfileDeps:
     profile: dict
     alerts: list[dict]
+    matched_alerts: list[dict] | None = None
 
 
 # global toggle for ai vs offline mode
@@ -58,12 +58,12 @@ def toggle_ai_mode():
 
 # --- agent definitions ---
 
-# main orchestrator agent — calls tools, synthesizes briefing
-guardian_agent = Agent(
-    GUARDIAN_MODEL,
+# main orchestrator agent, calls tools and synthesizes briefing
+dispatch_agent = Agent(
+    DISPATCH_MODEL,
     deps_type=ProfileDeps,
     output_type=BriefingOutput,
-    instructions=PROMPTS["guardian_system"],
+    instructions=PROMPTS["dispatch_system"],
     model_settings={"temperature": 0.0},
 )
 
@@ -83,39 +83,35 @@ phishing_agent = Agent(
     model_settings={"temperature": 0.0},
 )
 
-# evaluates password strength with ai reasoning
-password_agent = Agent(
-    TRIAGE_MODEL,
-    output_type=PasswordResult,
-    model_settings={"temperature": 0.0},
-)
 
 
-# --- guardian agent tools ---
+# --- dispatch agent tools ---
 
 
-# filters the threat db by region and services
-@guardian_agent.tool
-async def search_threats(ctx: RunContext[ProfileDeps]) -> list[dict]:
+# filters the threat db by region and services, stores results in deps
+@dispatch_agent.tool
+async def search_threats(ctx: RunContext[ProfileDeps]) -> str:
     """Search the threat database for alerts relevant to the user's region and services."""
     start = time.time()
     profile = ctx.deps.profile
     results = filter_threats(profile["region"], profile["services"], ctx.deps.alerts)
+    ctx.deps.matched_alerts = results
     latency = int((time.time() - start) * 1000)
     log_audit(
         "search_threats",
         f"region={profile['region']}, services={profile['services']}",
         f"{len(results)} alerts found",
         latency,
-        "none",
+        "local",
     )
-    return results
+    return f"Found {len(results)} alerts matching the user's profile."
 
 
-# delegates to the triage sub-agent to score alerts
-@guardian_agent.tool
-async def triage_alerts(ctx: RunContext[ProfileDeps], alerts: list[dict]) -> list[dict]:
-    """Classify and score a list of alerts for relevance to the user's profile using AI."""
+# delegates to the triage sub-agent to score alerts stored in deps
+@dispatch_agent.tool
+async def triage_alerts(ctx: RunContext[ProfileDeps]) -> list[dict]:
+    """Classify and score the matched alerts for relevance to the user's profile. Call after search_threats."""
+    alerts = ctx.deps.matched_alerts or []
     start = time.time()
     profile = ctx.deps.profile
     prompt = (
@@ -132,7 +128,20 @@ async def triage_alerts(ctx: RunContext[ProfileDeps], alerts: list[dict]) -> lis
         latency,
         TRIAGE_MODEL,
     )
-    return [r.model_dump() for r in result.output]
+    # merge triage scores with original alert data so the agent has full context
+    alert_map = {a["id"]: a for a in alerts}
+    enriched = []
+    for r in result.output:
+        alert = alert_map.get(r.alert_id, {})
+        enriched.append({
+            **r.model_dump(),
+            "title": alert.get("title", ""),
+            "severity": alert.get("severity", ""),
+            "category": alert.get("category", ""),
+            "affected_services": alert.get("affected_services", []),
+            "description": alert.get("description", ""),
+        })
+    return enriched
 
 
 # --- sse streaming helpers ---
@@ -148,6 +157,7 @@ async def emit(callback, event_type, data):
 TOOL_DESCRIPTIONS = {
     "search_threats": "Filtering threat database...",
     "triage_alerts": "Classifying alert relevance...",
+    "generate_briefing": "Compiling security briefing...",
 }
 
 
@@ -186,9 +196,18 @@ async def stream_tool_events(node, ctx, event_callback):
 
 # turns a raw tool result into a short human-readable summary
 def summarize_result(tool_name, result):
-    count = len(result) if isinstance(result, (list, dict)) else None
+    # extract content from ToolReturnPart if needed
+    raw = getattr(result, "content", result)
     if tool_name == "search_threats":
-        return f"Found {count} relevant alerts" if count else "Threats filtered"
+        return str(raw) if raw else "Threats filtered"
+    # pydantic-ai streams results as serialized strings, try to parse
+    data = raw
+    if isinstance(raw, str):
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            data = raw
+    count = len(data) if isinstance(data, (list, dict)) else None
     if tool_name == "triage_alerts":
         return f"Scored {count} alerts by risk" if count else "Alerts classified"
     return f"{count} results" if count else "Complete"
@@ -210,7 +229,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
     await emit(
         event_callback,
         "tool_start",
-        {"tool": "search_threats", "description": "Filtering threat database..."},
+        {"tool": "search_threats", "description": TOOL_DESCRIPTIONS["search_threats"]},
     )
     t = time.time()
     matched = filter_threats(profile["region"], profile["services"], alerts)
@@ -220,7 +239,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
         f"region={profile['region']}",
         f"{len(matched)} found",
         0,
-        "fallback",
+        "offline",
     )
     await emit(
         event_callback,
@@ -235,7 +254,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
     await emit(
         event_callback,
         "tool_start",
-        {"tool": "triage_alerts", "description": "Classifying alert relevance..."},
+        {"tool": "triage_alerts", "description": TOOL_DESCRIPTIONS["triage_alerts"]},
     )
     t = time.time()
     triaged = fallback_triage(matched, profile)
@@ -245,7 +264,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
         f"{len(matched)} alerts",
         f"{len(triaged)} triaged",
         0,
-        "fallback",
+        "offline",
     )
     await emit(
         event_callback,
@@ -260,7 +279,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
     await emit(
         event_callback,
         "tool_start",
-        {"tool": "generate_briefing", "description": "Compiling security briefing..."},
+        {"tool": "generate_briefing", "description": TOOL_DESCRIPTIONS["generate_briefing"]},
     )
     t = time.time()
     briefing = generate_briefing(profile, matched, triaged)
@@ -270,7 +289,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
         f"profile #{profile['id']}",
         briefing.shield_status,
         0,
-        "fallback",
+        "offline",
     )
     await emit(
         event_callback,
@@ -285,7 +304,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
     return briefing
 
 
-# runs the full analysis using the guardian agent (ai mode)
+# runs the full analysis using the dispatch agent (ai mode)
 async def run_ai_analysis(profile, alerts, event_callback):
     deps = ProfileDeps(profile=profile, alerts=alerts)
     user_prompt = (
@@ -296,8 +315,19 @@ async def run_ai_analysis(profile, alerts, event_callback):
 
     # stream agent nodes, emitting sse events for each tool call
     tool_rounds = 0
-    async with guardian_agent.iter(user_prompt, deps=deps) as run:
+    thinking_start = None
+    async with dispatch_agent.iter(user_prompt, deps=deps) as run:
         async for node in run:
+            # close out any pending thinking phase
+            if thinking_start is not None:
+                latency = f"{time.time() - thinking_start:.1f}"
+                await emit(
+                    event_callback,
+                    "tool_result",
+                    {"tool": "dispatch", "summary": "Done", "latency": latency},
+                )
+                thinking_start = None
+
             if Agent.is_call_tools_node(node):
                 await stream_tool_events(node, run.ctx, event_callback)
                 tool_rounds += 1
@@ -310,16 +340,26 @@ async def run_ai_analysis(profile, alerts, event_callback):
                 await emit(
                     event_callback,
                     "tool_start",
-                    {"tool": "guardian", "description": label},
+                    {"tool": "dispatch", "description": label},
                 )
+                thinking_start = time.time()
+
+        # close final thinking phase
+        if thinking_start is not None:
+            latency = f"{time.time() - thinking_start:.1f}"
+            await emit(
+                event_callback,
+                "tool_result",
+                {"tool": "dispatch", "summary": "Briefing ready", "latency": latency},
+            )
 
     result = run.result
     log_audit(
-        "guardian_agent",
+        "dispatch_agent",
         f"profile #{profile['id']}",
         result.output.shield_status,
         0,
-        GUARDIAN_MODEL,
+        DISPATCH_MODEL,
     )
     return result.output
 
@@ -338,7 +378,7 @@ async def _scan_urls(text):
         return {"urls_found": len(urls), "api_configured": bool(api_key), "threats": []}
 
     body = {
-        "client": {"clientId": "guardian", "clientVersion": "0.1"},
+        "client": {"clientId": "dispatch", "clientVersion": "0.1"},
         "threatInfo": {
             "threatTypes": ["MALWARE", "SOCIAL_ENGINEERING", "UNWANTED_SOFTWARE"],
             "platformTypes": ["ANY_PLATFORM"],
@@ -454,46 +494,18 @@ async def analyze_phishing_api(text):
     return result
 
 
-# --- password check (3 modes: ai, api-only, offline) ---
+# --- password check (2 modes: hibp + rules, or rules only) ---
+# passwords never leave the server. no AI involved for privacy.
 
 
-# ai mode runs hibp first, then feeds results to gemini
+# online mode: hibp breach scan + offline rules
 async def check_password(password):
     if ai_mode:
-        hibp = await _check_hibp(password)
-        return await _check_password_ai(password, hibp)
+        return await check_password_api(password)
     return check_password_offline(password)
 
 
-# combines offline strength check + hibp data, sends to password agent
-async def _check_password_ai(password, hibp):
-    strength = check_password_offline(password)
-    breach_context = ""
-    if hibp["breached"] is not None:
-        if hibp["breached"]:
-            breach_context = f"\nHIBP breach check: FOUND in {hibp['count']:,} data breaches. This is critical."
-        else:
-            breach_context = "\nHIBP breach check: NOT found in any known data breaches."
-
-    prompt = (
-        f"Analyze this password's strength and explain weaknesses in plain language.\n"
-        f"Password: {password}\n"
-        f"Basic analysis: strength={strength.strength}, reasons={strength.reasons}"
-        f"{breach_context}\n\n"
-        f"Provide additional insights: keyboard walk patterns, l33tspeak of dictionary words, "
-        f"predictability patterns. Keep reasons as a list of short bullet points."
-    )
-    start = time.time()
-    result = await password_agent.run(prompt)
-    latency = int((time.time() - start) * 1000)
-    log_audit("check_password", "ai+hibp", result.output.strength, latency, TRIAGE_MODEL)
-
-    result.output.breached = hibp.get("breached")
-    result.output.breach_count = hibp.get("count", 0)
-    return result.output
-
-
-# api-only mode: hibp breach scan + offline rules (no ai)
+# hibp breach scan + offline rules (no ai)
 async def check_password_api(password):
     hibp = await _check_hibp(password)
     result = check_password_offline(password)

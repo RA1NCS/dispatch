@@ -157,13 +157,13 @@ def test_phishing_analyze_offline(client):
 
 
 def test_password_check_offline(client):
-    resp = client.post("/password/check", data={"password": "weak", "mode": "auto"})
+    resp = client.post("/password/check", data={"password": "weak"})
     assert resp.status_code == 200
     assert "weak" in resp.text.lower()
 
 
 def test_password_check_strong(client):
-    resp = client.post("/password/check", data={"password": "K9$mPx!qR2vL", "mode": "auto"})
+    resp = client.post("/password/check", data={"password": "K9$mPx!qR2vL"})
     assert resp.status_code == 200
     assert "strong" in resp.text.lower()
 

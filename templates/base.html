@@ -2,7 +2,7 @@
 <html
     lang="en"
     class="h-full"
-    data-mode="online"
+    data-mode="{{ 'online' if ai_mode() else 'offline' }}"
 >
     <head>
         <meta charset="UTF-8" />
@@ -10,7 +10,7 @@
             name="viewport"
             content="width=device-width, initial-scale=1.0"
         />
-        <title>{% block title %}Guardian{% endblock %}</title>
+        <title>{% block title %}Dispatch{% endblock %}</title>
 
         <link
             rel="preconnect"
@@ -71,7 +71,11 @@
         </script>
 
         <style>
-            :root { --accent: 6 182 212; }
+            :root {
+                --accent: 6 182 212;
+                --surface-2: #131417;
+                --color-dim: #5a5b63;
+            }
             [data-mode="offline"] { --accent: 249 115 22; }
 
             * {
@@ -243,18 +247,18 @@
 
             select,
             input {
-                background-color: #131417;
+                background-color: var(--surface-2);
                 color: #e4e4e7;
             }
             select option {
-                background: #131417;
+                background: var(--surface-2);
             }
 
             .svc-toggle input { display: none; }
             .svc-toggle .box {
                 width: 14px; height: 14px;
                 border: 1px solid rgba(255,255,255,0.12);
-                background: #131417;
+                background: var(--surface-2);
                 display: flex; align-items: center; justify-content: center;
                 transition: border-color 0.1s ease, background-color 0.1s ease;
                 flex-shrink: 0;
@@ -291,10 +295,10 @@
                 color: rgb(var(--accent));
             }
             [data-mode="online"] .toggle-off {
-                color: #5a5b63;
+                color: var(--color-dim);
             }
             [data-mode="offline"] .toggle-on {
-                color: #5a5b63;
+                color: var(--color-dim);
             }
             [data-mode="offline"] .toggle-off {
                 background: rgba(249,115,22,0.1);
@@ -307,7 +311,7 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                background: #131417;
+                background: var(--surface-2);
                 border: 1px solid rgba(255,255,255,0.07);
                 padding: 10px 16px;
                 font-size: 13px;
@@ -317,10 +321,10 @@
             }
             .select-trigger:hover { border-color: rgba(255,255,255,0.12); }
             .select-trigger.invalid { border-color: #ef4444; }
-            .select-label.placeholder { color: #5a5b63; }
+            .select-label.placeholder { color: var(--color-dim); }
             .select-chevron {
                 width: 12px; height: 12px;
-                color: #5a5b63;
+                color: var(--color-dim);
                 flex-shrink: 0;
                 transition: transform 0.15s ease-out;
             }
@@ -329,7 +333,7 @@
                 position: absolute;
                 top: calc(100% + 2px);
                 left: 0; right: 0;
-                background: #131417;
+                background: var(--surface-2);
                 border: 1px solid rgba(255,255,255,0.07);
                 max-height: 200px;
                 overflow-y: auto;
@@ -417,13 +421,14 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-accent shield-pulse">
                                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             </svg>
-                            GUARDIAN
+                            DISPATCH
                         </a>
                         <div class="flex items-center gap-5 text-[12px]">
-                            <a href="/" class="{% if request.url.path == '/' or '/profiles' in request.url.path or '/analyze' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Home</a>
-                            <a href="/alerts" class="{% if '/alerts' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Alerts</a>
+                            <a href="/" class="{% if request.url.path == '/' or '/profiles' in request.url.path or '/analyze' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Analyze</a>
                             <a href="/phishing" class="{% if '/phishing' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Phishing</a>
                             <a href="/password" class="{% if '/password' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Password</a>
+                            <span class="text-border-2 mx-1">|</span>
+                            <a href="/alerts" class="{% if '/alerts' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Alerts</a>
                             <a href="/audit" class="{% if '/audit' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Audit</a>
                             <div id="ai-toggle" class="flex border border-border-2 ml-2 cursor-pointer select-none" onclick="toggleAI()">
                                 <span class="toggle-on px-2.5 py-1 text-[11px] tracking-widest border-r border-border-2 transition-colors duration-150 ease">ONLINE</span>
@@ -440,7 +445,7 @@
 
             <footer class="border-t border-border-1 py-4">
                 <div class="mx-auto max-w-5xl px-6 flex items-center justify-between text-[11px] font-mono text-dim">
-                    <span>GUARDIAN v0.1</span>
+                    <span>DISPATCH v0.1</span>
                     <span>COMMUNITY SAFETY & DIGITAL WELLNESS</span>
                 </div>
             </footer>
