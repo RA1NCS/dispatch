@@ -1,0 +1,17 @@
+[
+    {
+        "id": "sample_obvious",
+        "label": "Suspicious Bank Email",
+        "text": "From: security-alert@chasebank-verify.com\nSubject: URGENT: Your Account Has Been Suspended!\n\nDear Valued Customer,\n\nWe have detected unusual activity on your Chase account. Your account has been temporarily suspended for your protection.\n\nYou must verify your identity immediately or your account will be permanently closed within 24 hours.\n\nClick here to verify: http://chase-secure-login.totallylegit.xyz/verify?id=8831\n\nPlease have your Social Security Number and account credentials ready for verification.\n\nThank you,\nChase Security Team\nThis is an automated message. Do not reply."
+    },
+    {
+        "id": "sample_subtle",
+        "label": "Subtle IT Phishing",
+        "text": "From: it-helpdesk@company-portal.net\nSubject: Action Required: Password Expiration Notice\n\nHi,\n\nYour corporate password will expire in 3 days. To avoid disruption to your email and VPN access, please update your password using the link below.\n\nUpdate Password: https://company-portal.net/password-reset\n\nIf you did not request this change, please contact the IT Help Desk at ext. 4400.\n\nBest regards,\nIT Support Team"
+    },
+    {
+        "id": "sample_legit",
+        "label": "Legitimate Notification",
+        "text": "From: no-reply@amazon.com\nSubject: Your Amazon order #112-4839271-8834 has shipped\n\nHello,\n\nYour package is on its way! Here are your delivery details:\n\nOrder #112-4839271-8834\nEstimated delivery: March 10, 2026\nCarrier: UPS Ground\n\nYou can track your package in the Amazon app or at amazon.com/your-orders.\n\nThank you for shopping with us.\n\nAmazon.com"
+    }
+]

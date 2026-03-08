@@ -1,8 +1,12 @@
+import re
+
 from app.schemas import (
     CATEGORY_ACTIONS,
     CONCERN_TO_CATEGORIES,
     SEVERITY_RANK,
     BriefingOutput,
+    PasswordResult,
+    PhishingResult,
     ThreatFinding,
     TriageResult,
 )
@@ -145,3 +149,127 @@ def _top_actions(findings):
             if len(actions) >= 5:
                 return actions
     return actions or ["No immediate actions required based on current threat data"]
+
+
+URGENCY_WORDS = {
+    "immediately", "urgent", "suspended", "verify", "confirm",
+    "locked", "unauthorized", "expire", "disabled", "restricted",
+    "act now", "within 24 hours", "within 48 hours",
+}
+
+SUSPICIOUS_TLDS = {".xyz", ".top", ".click", ".buzz", ".tk", ".ml", ".ga", ".cf"}
+
+FREEMAIL_DOMAINS = {"gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com"}
+
+SENSITIVE_REQUESTS = {
+    "social security", "ssn", "password", "credit card",
+    "bank account", "credentials", "login",
+}
+
+URL_PATTERN = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
+EMAIL_FROM_PATTERN = re.compile(r'From:\s*\S+@(\S+)', re.IGNORECASE)
+
+
+def analyze_phishing_offline(text):
+    flags = []
+    text_lower = text.lower()
+
+    for word in URGENCY_WORDS:
+        if word in text_lower:
+            flags.append(f"Urgency language detected: \"{word}\"")
+            break
+
+    from_match = EMAIL_FROM_PATTERN.search(text)
+    if from_match:
+        domain = from_match.group(1).lower()
+        if domain in FREEMAIL_DOMAINS:
+            flags.append(f"Sender uses free email provider ({domain})")
+        brand_keywords = ["chase", "paypal", "amazon", "apple", "microsoft", "google", "bank"]
+        for brand in brand_keywords:
+            if brand in text_lower and brand not in domain:
+                flags.append(f"Email mentions {brand} but sender domain is {domain}")
+                break
+
+    urls = URL_PATTERN.findall(text)
+    for url in urls:
+        for tld in SUSPICIOUS_TLDS:
+            if tld in url.lower():
+                flags.append(f"Suspicious URL with {tld} domain: {url[:80]}")
+                break
+
+    for term in SENSITIVE_REQUESTS:
+        if term in text_lower:
+            flags.append(f"Requests sensitive information: \"{term}\"")
+            break
+
+    if text_lower != text.lower():
+        pass
+    all_caps_words = re.findall(r'\b[A-Z]{4,}\b', text)
+    all_caps_words = [w for w in all_caps_words if w not in {"FROM", "SUBJECT", "HTTP", "HTTPS", "HTML"}]
+    if len(all_caps_words) >= 2:
+        flags.append("Excessive use of ALL CAPS words")
+
+    if len(flags) >= 3:
+        verdict = "phishing"
+        confidence = min(0.5 + len(flags) * 0.1, 0.95)
+    elif len(flags) >= 1:
+        verdict = "suspicious"
+        confidence = 0.3 + len(flags) * 0.1
+    else:
+        verdict = "legitimate"
+        confidence = 0.6
+
+    explanation = (
+        f"Offline analysis found {len(flags)} red flag(s). "
+        + ("This email shows strong indicators of a phishing attempt." if verdict == "phishing"
+           else "Some suspicious elements detected, but not conclusive." if verdict == "suspicious"
+           else "No significant phishing indicators found.")
+    )
+
+    return PhishingResult(
+        verdict=verdict,
+        confidence=round(confidence, 2),
+        red_flags=flags if flags else ["No red flags detected"],
+        explanation=explanation,
+    )
+
+
+def check_password_offline(password):
+    reasons = []
+
+    if len(password) < 8:
+        reasons.append("Too short (minimum 8 characters)")
+    elif len(password) < 12:
+        reasons.append("Length is acceptable but 12+ characters recommended")
+
+    has_upper = bool(re.search(r'[A-Z]', password))
+    has_lower = bool(re.search(r'[a-z]', password))
+    has_digit = bool(re.search(r'\d', password))
+    has_special = bool(re.search(r'[^A-Za-z0-9]', password))
+    variety = sum([has_upper, has_lower, has_digit, has_special])
+
+    if variety < 2:
+        reasons.append("Uses only one character type (add uppercase, digits, or symbols)")
+    elif variety < 3:
+        reasons.append("Limited character variety (add digits or symbols)")
+
+    if re.search(r'(.)\1{2,}', password):
+        reasons.append("Contains repeated characters (e.g. 'aaa')")
+
+    if re.search(r'(012|123|234|345|456|567|678|789|abc|bcd|cde|def|qwe|wer|ert)', password.lower()):
+        reasons.append("Contains sequential characters")
+
+    if len(password) >= 12 and variety >= 3 and not reasons:
+        strength = "strong"
+    elif len(password) >= 8 and variety >= 2:
+        strength = "fair"
+    else:
+        strength = "weak"
+
+    if not reasons:
+        reasons.append("Password meets basic strength requirements")
+
+    return PasswordResult(
+        strength=strength,
+        reasons=reasons,
+    )

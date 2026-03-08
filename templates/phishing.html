@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Phishing Analyzer - Guardian{% endblock %}
+
+{% block content %}
+<div class="fade-in font-mono">
+    <h1 class="font-bold text-white tracking-tight mb-2">PHISHING ANALYZER</h1>
+    <p class="text-[12px] text-dim mb-8">Analyze emails for phishing indicators using AI, rules, or URL scanning.</p>
+
+    <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
+        <span class="text-accent mr-1.5">//</span>SAMPLE EMAILS
+    </div>
+    <div class="flex flex-wrap gap-2 mb-6">
+        {% for s in samples %}
+        <button type="button" onclick="loadSample('{{ s.id }}')"
+            class="px-3 py-1.5 border border-border-1 text-[11px] text-muted hover:text-white hover:border-border-2 transition-colors uppercase tracking-widest">
+            {{ s.label }}
+        </button>
+        {% endfor %}
+    </div>
+
+    <form id="phishing-form" class="space-y-4">
+        <textarea name="email_text" id="email-input" rows="10" required
+            placeholder="Paste email text here..."
+            class="w-full bg-surface-1 border border-border-1 px-4 py-3 text-[13px] text-white font-mono placeholder:text-dim focus:border-accent/30 focus:outline-none transition-colors resize-y"></textarea>
+
+        <input type="hidden" name="mode" id="phishing-mode" value="auto">
+
+        <div class="flex items-center gap-3">
+            <button type="submit" onclick="setMode('auto')"
+                hx-post="/phishing/analyze" hx-target="#phishing-result" hx-include="#phishing-form"
+                hx-indicator="#phishing-loading"
+                class="px-5 py-2.5 border border-accent/30 bg-accent/[0.05] hover:bg-accent/[0.12] text-accent text-[13px] uppercase tracking-widest transition-colors">
+                Analyze <span class="text-accent/50">·</span> <span id="phishing-btn-mode">AI</span>
+            </button>
+            <button type="submit" onclick="setMode('api')"
+                hx-post="/phishing/analyze" hx-target="#phishing-result" hx-include="#phishing-form"
+                hx-indicator="#phishing-loading"
+                class="px-5 py-2.5 border border-border-2 hover:border-accent/30 hover:bg-accent/[0.05] text-dim hover:text-accent text-[13px] uppercase tracking-widest transition-colors">
+                Scan URLs
+            </button>
+        </div>
+    </form>
+
+    <div id="phishing-loading" class="mt-8 htmx-indicator">
+        <div class="py-6 border border-border-1 bg-white/[0.02] analyzing-pulse">
+            <div class="flex items-center justify-center gap-2">
+                <span class="text-[14px] text-dim uppercase tracking-[0.2em]">Analyzing</span>
+                <span class="text-dim text-[14px]">...</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="phishing-result" class="mt-8"></div>
+</div>
+
+<script>
+    const samples = {{ samples|tojson }};
+    function loadSample(id) {
+        const sample = samples.find(s => s.id === id);
+        if (sample) document.getElementById('email-input').value = sample.text;
+    }
+    function setMode(mode) {
+        document.getElementById('phishing-mode').value = mode;
+    }
+    function syncBtnLabel() {
+        var el = document.getElementById('phishing-btn-mode');
+        el.textContent = document.documentElement.dataset.mode === 'online' ? 'AI' : 'Offline';
+    }
+    syncBtnLabel();
+    new MutationObserver(syncBtnLabel).observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
+</script>
+{% endblock %}

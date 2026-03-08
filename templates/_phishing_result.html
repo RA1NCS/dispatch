@@ -1,0 +1,44 @@
+<div class="fade-in">
+    <div class="flex items-center justify-between mb-3">
+        <div class="text-[11px] text-dim uppercase tracking-widest">
+            <span class="text-accent mr-1.5">//</span>ANALYSIS RESULT
+        </div>
+        <span class="text-[11px] text-dim border border-border-1 px-2 py-0.5">{{ mode_label }}</span>
+    </div>
+
+    <div class="border p-6 mb-6
+        {% if result.verdict == 'phishing' %}border-status-red/30 bg-status-red/[0.05]
+        {% elif result.verdict == 'suspicious' %}border-status-yellow/30 bg-status-yellow/[0.05]
+        {% else %}border-status-green/30 bg-status-green/[0.05]{% endif %}">
+        <div class="flex items-center justify-between mb-3">
+            <span class="text-[20px] font-bold uppercase tracking-wider
+                {% if result.verdict == 'phishing' %}text-status-red
+                {% elif result.verdict == 'suspicious' %}text-status-yellow
+                {% else %}text-status-green{% endif %}">
+                {{ result.verdict }}
+            </span>
+            <span class="text-[12px] text-dim">
+                Confidence: {{ (result.confidence * 100)|int }}%
+            </span>
+        </div>
+        <p class="text-[13px] text-muted">{{ result.explanation }}</p>
+    </div>
+
+    {% if result.red_flags %}
+    <div class="text-[11px] text-dim uppercase tracking-widest mb-3">
+        <span class="text-accent mr-1.5">//</span>RED FLAGS
+    </div>
+    <div class="border border-border-1 divide-y divide-border-1">
+        {% for flag in result.red_flags %}
+        <div class="flex items-start gap-3 px-4 py-3">
+            <span class="text-[12px] mt-0.5 flex-shrink-0
+                {% if 'No red flags' in flag or 'no threats found' in flag or 'Not found' in flag %}text-status-green
+                {% else %}text-status-red{% endif %}">
+                {% if 'No red flags' in flag or 'no threats found' in flag or 'Not found' in flag %}&#10003;{% else %}&#9888;{% endif %}
+            </span>
+            <span class="text-[13px] text-muted">{{ flag }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>

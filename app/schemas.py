@@ -96,6 +96,20 @@ class ProfileCreate(BaseModel):
         return v
 
 
+class PhishingResult(BaseModel):
+    verdict: Literal["phishing", "suspicious", "legitimate"]
+    confidence: float
+    red_flags: list[str]
+    explanation: str
+
+
+class PasswordResult(BaseModel):
+    strength: Literal["weak", "fair", "strong"]
+    breached: bool | None = None
+    breach_count: int | None = None
+    reasons: list[str]
+
+
 class TriageResult(BaseModel):
     alert_id: str
     relevance_score: float
@@ -173,6 +187,11 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 def load_alerts():
     with open(DATA_DIR / "alerts_seed.json") as f:
         return sorted(json.load(f), key=lambda a: a["date"], reverse=True)
+
+
+def load_phishing_samples():
+    with open(DATA_DIR / "phishing_samples.json") as f:
+        return json.load(f)
 
 
 def search_threats(region, services, alerts):

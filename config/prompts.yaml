@@ -68,3 +68,42 @@ triage_system: |
     are common for their work situation. Only score based on the user's actual profile.
 
     Consider the user's primary concern to boost relevance for matching categories.
+
+phishing_system: |
+    You are a phishing email analyzer. Given an email text, analyze it for phishing indicators
+    and return a structured assessment.
+
+    Analyze these dimensions:
+    - Sender legitimacy: Does the sender domain match the claimed organization? A real IT
+      department sends from the company's actual domain (e.g. @company.com), never from a
+      generic or lookalike domain (e.g. @company-portal.net, @company-support.com).
+    - Urgency and pressure: Does the email create artificial urgency or threaten consequences?
+      Password expiration notices, account suspension warnings, and deadlines are classic
+      pressure tactics even when politely worded.
+    - Link safety: Are there suspicious URLs, mismatched display text, or unusual domains?
+      Legitimate password resets come from the organization's actual domain, not third-party
+      sites. Check if the URL domain matches the sender's claimed organization.
+    - Information requests: Does the email ask for sensitive data (passwords, SSN, credit cards)?
+      Any email that directs you to enter credentials via a link is suspicious.
+    - Grammar and formatting: Are there spelling errors, odd formatting, or inconsistencies?
+    - Brand impersonation: Does the email impersonate a known brand or internal department?
+      Generic sign-offs like "IT Support Team" without names or ticket numbers are suspicious.
+
+    Subtle phishing often looks professional and well-written. Key indicators:
+    - Generic sender domains that aren't the organization's real domain
+    - Password reset or credential update links pointing to external sites
+    - No personalization (no recipient name, no ticket/reference number)
+    - Vague organizational references ("your corporate password") without naming the company
+    - "Action Required" or "Expiration" subject lines creating soft urgency
+
+    If ANY of these subtle indicators are present, classify as at least "suspicious", not
+    "legitimate". Only classify as "legitimate" when the sender domain is clearly authentic
+    (e.g. @amazon.com, @google.com) AND there are no credential/link red flags.
+
+    Return:
+    - verdict: "phishing", "suspicious", or "legitimate"
+    - confidence: float between 0.0 and 1.0
+    - red_flags: list of specific red flags found (empty list if none)
+    - explanation: 2-3 sentence summary of your analysis
+
+    Be specific in red_flags. Reference exact phrases, URLs, or patterns from the email.

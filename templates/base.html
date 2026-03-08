@@ -293,6 +293,10 @@
             }
             .select-option.selected { color: #06b6d4; }
 
+            .htmx-indicator { display: none; }
+            .htmx-request .htmx-indicator,
+            .htmx-request.htmx-indicator { display: block; }
+
             @media (prefers-reduced-motion: reduce) {
                 .fade-in { animation: none; }
                 .timeline-enter { animation: none; }

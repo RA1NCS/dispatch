@@ -9,7 +9,14 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
-from app.agent import run_analysis, toggle_ai_mode
+from app.agent import (
+    analyze_phishing,
+    analyze_phishing_api,
+    check_password,
+    check_password_api,
+    run_analysis,
+    toggle_ai_mode,
+)
 from app.database import (
     create_profile,
     get_audit_log,
@@ -32,6 +39,7 @@ from app.schemas import (
     WORK_LABELS,
     ProfileCreate,
     load_alerts,
+    load_phishing_samples,
 )
 
 load_dotenv()
@@ -325,6 +333,73 @@ async def analyze_stream(profile_id: int):
 async def toggle_ai():
     enabled = toggle_ai_mode()
     return {"enabled": enabled}
+
+
+@app.get("/phishing")
+def phishing_page(request: Request):
+    samples = load_phishing_samples()
+    return templates.TemplateResponse(
+        "phishing.html",
+        {"request": request, "samples": samples},
+    )
+
+
+@app.post("/phishing/analyze")
+async def phishing_analyze(
+    request: Request, email_text: str = Form(...), mode: str = Form("auto")
+):
+    if not email_text.strip():
+        return HTMLResponse(
+            '<div class="text-dim text-[13px]">Please enter email text to analyze.</div>'
+        )
+    from app.agent import ai_mode as current_ai_mode
+
+    if mode == "api":
+        result = await analyze_phishing_api(email_text)
+        mode_label = "Safe Browsing"
+    elif current_ai_mode:
+        result = await analyze_phishing(email_text)
+        mode_label = "AI + Safe Browsing"
+    else:
+        result = await analyze_phishing(email_text)
+        mode_label = "Offline"
+    return templates.TemplateResponse(
+        "_phishing_result.html",
+        {"request": request, "result": result, "mode_label": mode_label},
+    )
+
+
+@app.get("/password")
+def password_page(request: Request):
+    return templates.TemplateResponse(
+        "password.html",
+        {"request": request},
+    )
+
+
+@app.post("/password/check")
+async def password_check(
+    request: Request, password: str = Form(...), mode: str = Form("auto")
+):
+    if not password:
+        return HTMLResponse(
+            '<div class="text-dim text-[13px]">Please enter a password to check.</div>'
+        )
+    from app.agent import ai_mode as current_ai_mode
+
+    if mode == "api":
+        result = await check_password_api(password)
+        mode_label = "Breach Scan"
+    elif current_ai_mode:
+        result = await check_password(password)
+        mode_label = "AI + Breach Scan"
+    else:
+        result = await check_password(password)
+        mode_label = "Offline"
+    return templates.TemplateResponse(
+        "_password_result.html",
+        {"request": request, "result": result, "mode_label": mode_label},
+    )
 
 
 @app.get("/audit")
