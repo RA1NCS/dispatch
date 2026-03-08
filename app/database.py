@@ -6,6 +6,7 @@ from pathlib import Path
 DB_PATH = Path(__file__).resolve().parent.parent / "guardian.db"
 
 
+# opens a connection with row factory and WAL mode
 def get_connection():
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
@@ -13,6 +14,7 @@ def get_connection():
     return conn
 
 
+# creates the profiles and audit_log tables if they don't exist
 def init_db():
     conn = get_connection()
     conn.executescript(
@@ -40,6 +42,7 @@ def init_db():
     conn.close()
 
 
+# inserts a new threat profile, stores services as json
 def create_profile(region, services, work_situation, primary_concern):
     now = datetime.now(timezone.utc).isoformat()
     conn = get_connection()
@@ -53,6 +56,7 @@ def create_profile(region, services, work_situation, primary_concern):
     return profile_id
 
 
+# fetches a single profile by id, deserializes the services json
 def get_profile(profile_id):
     conn = get_connection()
     row = conn.execute("SELECT * FROM profiles WHERE id = ?", (profile_id,)).fetchone()
@@ -64,6 +68,7 @@ def get_profile(profile_id):
     return profile
 
 
+# updates an existing profile and bumps updated_at
 def update_profile(profile_id, region, services, work_situation, primary_concern):
     now = datetime.now(timezone.utc).isoformat()
     conn = get_connection()
@@ -82,6 +87,7 @@ def update_profile(profile_id, region, services, work_situation, primary_concern
     conn.close()
 
 
+# returns all profiles sorted by most recently updated
 def list_profiles():
     conn = get_connection()
     rows = conn.execute("SELECT * FROM profiles ORDER BY updated_at DESC").fetchall()
@@ -94,6 +100,7 @@ def list_profiles():
     return profiles
 
 
+# records a tool call to the audit log for transparency
 def log_audit(tool_name, input_summary, output_summary, latency_ms, model_used):
     now = datetime.now(timezone.utc).isoformat()
     conn = get_connection()
@@ -105,6 +112,7 @@ def log_audit(tool_name, input_summary, output_summary, latency_ms, model_used):
     conn.close()
 
 
+# fetches the full audit log, newest first
 def get_audit_log():
     conn = get_connection()
     rows = conn.execute("SELECT * FROM audit_log ORDER BY timestamp DESC").fetchall()

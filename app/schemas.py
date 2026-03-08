@@ -1,8 +1,11 @@
 import json
+import re
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, field_validator
+
+# --- profile constants ---
 
 VALID_REGIONS = ["bay_area", "nyc_metro", "philadelphia", "chicago", "national"]
 VALID_SERVICES = [
@@ -55,7 +58,67 @@ CONCERN_LABELS = {
     "all": "All Threats",
 }
 
+# --- alert constants ---
 
+ALERT_SEVERITIES = ["critical", "high", "medium", "low"]
+ALERT_CATEGORIES = ["phishing", "data_breach", "vulnerability", "malware", "scam"]
+
+# maps severity to numeric rank for sorting (critical=4, low=1)
+SEVERITY_RANK = {s: len(ALERT_SEVERITIES) - i for i, s in enumerate(ALERT_SEVERITIES)}
+
+CATEGORY_LABELS = {
+    "phishing": "Phishing",
+    "data_breach": "Data Breach",
+    "vulnerability": "Vulnerability",
+    "malware": "Malware",
+    "scam": "Scam",
+}
+
+# maps user concern to relevant alert categories for triage boosting
+CONCERN_TO_CATEGORIES = {
+    "phishing": {"phishing", "scam"},
+    "data_breaches": {"data_breach"},
+    "vulnerabilities": {"vulnerability"},
+    "all": set(ALERT_CATEGORIES),
+}
+
+# recommended actions per alert category, used in briefing findings
+CATEGORY_ACTIONS = {
+    "phishing": [
+        "Do not click links in unsolicited emails claiming account issues",
+        "Verify sender email addresses carefully before responding",
+        "Enable 2FA on all affected accounts",
+    ],
+    "data_breach": [
+        "Change passwords on affected services immediately",
+        "Monitor account activity for unauthorized access",
+        "Consider freezing credit if personal data was exposed",
+    ],
+    "vulnerability": [
+        "Update all affected software to the latest version",
+        "Check vendor security advisories for patches",
+        "Disable affected features until patches are applied",
+    ],
+    "malware": [
+        "Run a full antivirus scan on all devices",
+        "Avoid opening attachments from unknown senders",
+        "Disconnect affected devices from the network",
+    ],
+    "scam": [
+        "Never provide remote access to unsolicited callers",
+        "Verify charges directly through official service websites",
+        "Report scam attempts to the FTC",
+    ],
+}
+
+# --- shared patterns ---
+
+URL_PATTERN = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
+
+# --- pydantic models ---
+
+
+# validates profile form input
 class ProfileCreate(BaseModel):
     region: str
     services: list[str]
@@ -96,6 +159,7 @@ class ProfileCreate(BaseModel):
         return v
 
 
+# phishing email analysis result
 class PhishingResult(BaseModel):
     verdict: Literal["phishing", "suspicious", "legitimate"]
     confidence: float
@@ -103,6 +167,7 @@ class PhishingResult(BaseModel):
     explanation: str
 
 
+# password strength check result, optionally with breach data
 class PasswordResult(BaseModel):
     strength: Literal["weak", "fair", "strong"]
     breached: bool | None = None
@@ -110,12 +175,14 @@ class PasswordResult(BaseModel):
     reasons: list[str]
 
 
+# single alert scored for relevance to a user's profile
 class TriageResult(BaseModel):
     alert_id: str
     relevance_score: float
     relevance_reason: str
 
 
+# one finding in a security briefing, tied to a specific alert
 class ThreatFinding(BaseModel):
     alert_id: str
     title: str
@@ -126,6 +193,7 @@ class ThreatFinding(BaseModel):
     action_items: list[str]
 
 
+# the full security briefing the agent produces
 class BriefingOutput(BaseModel):
     shield_status: Literal["green", "yellow", "red"]
     status_summary: str
@@ -134,66 +202,24 @@ class BriefingOutput(BaseModel):
     immediate_actions: list[str]
 
 
-ALERT_SEVERITIES = ["critical", "high", "medium", "low"]
-ALERT_CATEGORIES = ["phishing", "data_breach", "vulnerability", "malware", "scam"]
-SEVERITY_RANK = {s: len(ALERT_SEVERITIES) - i for i, s in enumerate(ALERT_SEVERITIES)}
-
-CATEGORY_LABELS = {
-    "phishing": "Phishing",
-    "data_breach": "Data Breach",
-    "vulnerability": "Vulnerability",
-    "malware": "Malware",
-    "scam": "Scam",
-}
-
-CONCERN_TO_CATEGORIES = {
-    "phishing": {"phishing", "scam"},
-    "data_breaches": {"data_breach"},
-    "vulnerabilities": {"vulnerability"},
-    "all": set(ALERT_CATEGORIES),
-}
-
-CATEGORY_ACTIONS = {
-    "phishing": [
-        "Do not click links in unsolicited emails claiming account issues",
-        "Verify sender email addresses carefully before responding",
-        "Enable 2FA on all affected accounts",
-    ],
-    "data_breach": [
-        "Change passwords on affected services immediately",
-        "Monitor account activity for unauthorized access",
-        "Consider freezing credit if personal data was exposed",
-    ],
-    "vulnerability": [
-        "Update all affected software to the latest version",
-        "Check vendor security advisories for patches",
-        "Disable affected features until patches are applied",
-    ],
-    "malware": [
-        "Run a full antivirus scan on all devices",
-        "Avoid opening attachments from unknown senders",
-        "Disconnect affected devices from the network",
-    ],
-    "scam": [
-        "Never provide remote access to unsolicited callers",
-        "Verify charges directly through official service websites",
-        "Report scam attempts to the FTC",
-    ],
-}
+# --- data loading ---
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 
+# loads seed alerts sorted newest first
 def load_alerts():
     with open(DATA_DIR / "alerts_seed.json") as f:
         return sorted(json.load(f), key=lambda a: a["date"], reverse=True)
 
 
+# loads example phishing emails for the sample picker
 def load_phishing_samples():
     with open(DATA_DIR / "phishing_samples.json") as f:
         return json.load(f)
 
 
+# filters alerts by region or service overlap (wide net, OR logic)
 def search_threats(region, services, alerts):
     results = []
     for alert in alerts:

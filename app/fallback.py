@@ -4,6 +4,8 @@ from app.schemas import (
     CATEGORY_ACTIONS,
     CONCERN_TO_CATEGORIES,
     SEVERITY_RANK,
+    URL_PATTERN,
+    VALID_SERVICES,
     BriefingOutput,
     PasswordResult,
     PhishingResult,
@@ -12,20 +14,27 @@ from app.schemas import (
 )
 
 
+# scores each alert's relevance to the user's profile using rules
 def triage_alerts(alerts, profile):
     results = []
     concern_cats = CONCERN_TO_CATEGORIES.get(profile["primary_concern"], set())
     for alert in alerts:
         score = 0.2
+
+        # service overlap is the strongest signal
         service_overlap = set(alert["affected_services"]) & set(profile["services"])
         if service_overlap:
             score = 0.8
+
+        # region match boosts score, combo with services = max
         if alert["region"] == profile["region"]:
             score = max(score, 0.6)
             if service_overlap:
                 score = 1.0
         elif alert["region"] == "national" and not service_overlap:
             score = max(score, 0.4)
+
+        # small boost if alert matches user's primary concern
         if alert["category"] in concern_cats:
             score = min(score + 0.1, 1.0)
         reason = _build_reason(alert, profile, service_overlap)
@@ -39,6 +48,7 @@ def triage_alerts(alerts, profile):
     return sorted(results, key=lambda r: r.relevance_score, reverse=True)
 
 
+# builds a human-readable explanation for why an alert scored the way it did
 def _build_reason(alert, profile, service_overlap):
     parts = []
     if service_overlap:
@@ -53,8 +63,11 @@ def _build_reason(alert, profile, service_overlap):
     return "; ".join(parts).capitalize()
 
 
+# assembles a full security briefing from triage results
 def generate_briefing(profile, alerts, triage_results):
     triage_map = {t.alert_id: t for t in triage_results}
+
+    # only include alerts that scored 0.4+, sorted by severity then relevance
     relevant = [
         (a, triage_map[a["id"]])
         for a in alerts
@@ -64,6 +77,7 @@ def generate_briefing(profile, alerts, triage_results):
         key=lambda x: (-_severity_rank(x[0]["severity"]), -x[1].relevance_score)
     )
 
+    # build findings from top 10 relevant alerts
     findings = []
     for alert, triage in relevant[:10]:
         actions = CATEGORY_ACTIONS.get(
@@ -99,10 +113,12 @@ def generate_briefing(profile, alerts, triage_results):
     )
 
 
+# converts severity string to numeric rank for sorting
 def _severity_rank(severity):
     return SEVERITY_RANK.get(severity, 0)
 
 
+# determines overall shield color from the worst finding
 def _compute_shield(findings):
     if any(f.severity == "critical" for f in findings):
         return "red"
@@ -111,6 +127,7 @@ def _compute_shield(findings):
     return "green"
 
 
+# looks for patterns across findings (same service hit multiple times, etc)
 def _find_correlations(findings, alert_map):
     service_counts = {}
     category_counts = {}
@@ -121,11 +138,13 @@ def _find_correlations(findings, alert_map):
             service_counts[svc] = service_counts.get(svc, 0) + 1
 
     correlations = []
+    # flag services targeted by 2+ alerts
     for svc, count in service_counts.items():
         if count >= 2:
             correlations.append(
                 f"{svc.capitalize()} appears in {count} alerts, suggesting coordinated or persistent targeting of this service"
             )
+    # flag categories with 3+ alerts
     for cat, count in category_counts.items():
         if count >= 3:
             correlations.append(
@@ -138,6 +157,7 @@ def _find_correlations(findings, alert_map):
     return correlations
 
 
+# picks the top 5 most urgent actions from highest-severity findings
 def _top_actions(findings):
     seen = set()
     actions = []
@@ -150,6 +170,8 @@ def _top_actions(findings):
                 return actions
     return actions or ["No immediate actions required based on current threat data"]
 
+
+# --- phishing detection (rule-based) ---
 
 URGENCY_WORDS = {
     "immediately", "urgent", "suspended", "verify", "confirm",
@@ -166,30 +188,33 @@ SENSITIVE_REQUESTS = {
     "bank account", "credentials", "login",
 }
 
-URL_PATTERN = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
 EMAIL_FROM_PATTERN = re.compile(r'From:\s*\S+@(\S+)', re.IGNORECASE)
 
 
+# scans email text for phishing red flags using keywords and patterns
 def analyze_phishing_offline(text):
     flags = []
     text_lower = text.lower()
 
+    # check for pressure/urgency language
     for word in URGENCY_WORDS:
         if word in text_lower:
             flags.append(f"Urgency language detected: \"{word}\"")
             break
 
+    # check sender domain for freemail or brand mismatch
     from_match = EMAIL_FROM_PATTERN.search(text)
     if from_match:
         domain = from_match.group(1).lower()
         if domain in FREEMAIL_DOMAINS:
             flags.append(f"Sender uses free email provider ({domain})")
-        brand_keywords = ["chase", "paypal", "amazon", "apple", "microsoft", "google", "bank"]
+        brand_keywords = list(VALID_SERVICES) + ["chase", "bank", "google"]
         for brand in brand_keywords:
             if brand in text_lower and brand not in domain:
                 flags.append(f"Email mentions {brand} but sender domain is {domain}")
                 break
 
+    # check urls for sketchy tlds
     urls = URL_PATTERN.findall(text)
     for url in urls:
         for tld in SUSPICIOUS_TLDS:
@@ -197,18 +222,19 @@ def analyze_phishing_offline(text):
                 flags.append(f"Suspicious URL with {tld} domain: {url[:80]}")
                 break
 
+    # check for requests for sensitive info
     for term in SENSITIVE_REQUESTS:
         if term in text_lower:
             flags.append(f"Requests sensitive information: \"{term}\"")
             break
 
-    if text_lower != text.lower():
-        pass
+    # excessive ALL CAPS is a red flag (ignoring common acronyms)
     all_caps_words = re.findall(r'\b[A-Z]{4,}\b', text)
     all_caps_words = [w for w in all_caps_words if w not in {"FROM", "SUBJECT", "HTTP", "HTTPS", "HTML"}]
     if len(all_caps_words) >= 2:
         flags.append("Excessive use of ALL CAPS words")
 
+    # verdict based on how many flags tripped
     if len(flags) >= 3:
         verdict = "phishing"
         confidence = min(0.5 + len(flags) * 0.1, 0.95)
@@ -234,14 +260,20 @@ def analyze_phishing_offline(text):
     )
 
 
+# --- password strength check (rule-based) ---
+
+
+# evaluates password strength based on length, variety, and patterns
 def check_password_offline(password):
     reasons = []
 
+    # length check
     if len(password) < 8:
         reasons.append("Too short (minimum 8 characters)")
     elif len(password) < 12:
         reasons.append("Length is acceptable but 12+ characters recommended")
 
+    # character variety (upper, lower, digit, special)
     has_upper = bool(re.search(r'[A-Z]', password))
     has_lower = bool(re.search(r'[a-z]', password))
     has_digit = bool(re.search(r'\d', password))
@@ -253,12 +285,14 @@ def check_password_offline(password):
     elif variety < 3:
         reasons.append("Limited character variety (add digits or symbols)")
 
+    # pattern detection
     if re.search(r'(.)\1{2,}', password):
         reasons.append("Contains repeated characters (e.g. 'aaa')")
 
     if re.search(r'(012|123|234|345|456|567|678|789|abc|bcd|cde|def|qwe|wer|ert)', password.lower()):
         reasons.append("Contains sequential characters")
 
+    # overall strength verdict
     if len(password) >= 12 and variety >= 3 and not reasons:
         strength = "strong"
     elif len(password) >= 8 and variety >= 2:

@@ -1,15 +1,13 @@
+import hashlib
 import json
+import os
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
-
-import hashlib
-import os
-import re
-
 import httpx
+import yaml
 from pydantic_ai import Agent, RunContext
 
 from app.database import log_audit
@@ -20,6 +18,7 @@ from app.fallback import (
     triage_alerts as fallback_triage,
 )
 from app.schemas import (
+    URL_PATTERN,
     BriefingOutput,
     PasswordResult,
     PhishingResult,
@@ -28,23 +27,39 @@ from app.schemas import (
     search_threats as filter_threats,
 )
 
+# --- config ---
+
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 
+# model ids for pydantic-ai agents
 GUARDIAN_MODEL = "google-gla:gemini-3-flash-preview"
 TRIAGE_MODEL = "google-gla:gemini-3.1-flash-lite-preview"
 
+# load system prompts from yaml (externalized for easy editing)
 with open(CONFIG_DIR / "prompts.yaml") as f:
     PROMPTS = yaml.safe_load(f)
 
-
+# deps injected into the guardian agent via RunContext
 @dataclass
 class ProfileDeps:
     profile: dict
     alerts: list[dict]
 
 
+# global toggle for ai vs offline mode
 ai_mode = True
 
+
+# flips between ai and offline mode
+def toggle_ai_mode():
+    global ai_mode
+    ai_mode = not ai_mode
+    return ai_mode
+
+
+# --- agent definitions ---
+
+# main orchestrator agent — calls tools, synthesizes briefing
 guardian_agent = Agent(
     GUARDIAN_MODEL,
     deps_type=ProfileDeps,
@@ -53,6 +68,7 @@ guardian_agent = Agent(
     model_settings={"temperature": 0.0},
 )
 
+# sub-agent for scoring alert relevance to a profile
 triage_agent = Agent(
     TRIAGE_MODEL,
     output_type=list[TriageResult],
@@ -60,7 +76,26 @@ triage_agent = Agent(
     model_settings={"temperature": 0.0},
 )
 
+# analyzes emails for phishing indicators
+phishing_agent = Agent(
+    TRIAGE_MODEL,
+    output_type=PhishingResult,
+    instructions=PROMPTS["phishing_system"],
+    model_settings={"temperature": 0.0},
+)
 
+# evaluates password strength with ai reasoning
+password_agent = Agent(
+    TRIAGE_MODEL,
+    output_type=PasswordResult,
+    model_settings={"temperature": 0.0},
+)
+
+
+# --- guardian agent tools ---
+
+
+# filters the threat db by region and services
 @guardian_agent.tool
 async def search_threats(ctx: RunContext[ProfileDeps]) -> list[dict]:
     """Search the threat database for alerts relevant to the user's region and services."""
@@ -78,6 +113,7 @@ async def search_threats(ctx: RunContext[ProfileDeps]) -> list[dict]:
     return results
 
 
+# delegates to the triage sub-agent to score alerts
 @guardian_agent.tool
 async def triage_alerts(ctx: RunContext[ProfileDeps], alerts: list[dict]) -> list[dict]:
     """Classify and score a list of alerts for relevance to the user's profile using AI."""
@@ -100,17 +136,69 @@ async def triage_alerts(ctx: RunContext[ProfileDeps], alerts: list[dict]) -> lis
     return [r.model_dump() for r in result.output]
 
 
-def toggle_ai_mode():
-    global ai_mode
-    ai_mode = not ai_mode
-    return ai_mode
+# --- sse streaming helpers ---
 
 
+# helper to fire sse events if a callback is provided
 async def emit(callback, event_type, data):
     if callback:
         await callback(event_type, data)
 
 
+# friendly labels for the agent activity timeline
+TOOL_DESCRIPTIONS = {
+    "search_threats": "Filtering threat database...",
+    "triage_alerts": "Classifying alert relevance...",
+}
+
+
+# streams tool start/result events from an agent tool call node
+async def stream_tool_events(node, ctx, event_callback):
+    current_tool = "unknown"
+    tool_start_time = None
+    async with node.stream(ctx) as stream:
+        async for event in stream:
+            if hasattr(event, "part") and hasattr(event.part, "tool_name"):
+                current_tool = event.part.tool_name
+                tool_start_time = time.time()
+                await emit(
+                    event_callback,
+                    "tool_start",
+                    {
+                        "tool": current_tool,
+                        "description": TOOL_DESCRIPTIONS.get(
+                            current_tool, "Processing..."
+                        ),
+                    },
+                )
+            if not hasattr(event, "result"):
+                continue
+            latency = f"{time.time() - tool_start_time:.1f}" if tool_start_time else ""
+            await emit(
+                event_callback,
+                "tool_result",
+                {
+                    "tool": current_tool,
+                    "summary": summarize_result(current_tool, event.result),
+                    "latency": latency,
+                },
+            )
+
+
+# turns a raw tool result into a short human-readable summary
+def summarize_result(tool_name, result):
+    count = len(result) if isinstance(result, (list, dict)) else None
+    if tool_name == "search_threats":
+        return f"Found {count} relevant alerts" if count else "Threats filtered"
+    if tool_name == "triage_alerts":
+        return f"Scored {count} alerts by risk" if count else "Alerts classified"
+    return f"{count} results" if count else "Complete"
+
+
+# --- analysis pipeline ---
+
+
+# entry point: routes to ai or fallback based on mode toggle
 async def run_analysis(profile, event_callback=None):
     alerts = load_alerts()
     if ai_mode:
@@ -118,6 +206,7 @@ async def run_analysis(profile, event_callback=None):
     return await run_fallback_analysis(profile, alerts, event_callback)
 
 
+# runs the full analysis using rule-based logic (no ai calls)
 async def run_fallback_analysis(profile, alerts, event_callback):
     await emit(
         event_callback,
@@ -197,6 +286,7 @@ async def run_fallback_analysis(profile, alerts, event_callback):
     return briefing
 
 
+# runs the full analysis using the guardian agent (ai mode)
 async def run_ai_analysis(profile, alerts, event_callback):
     deps = ProfileDeps(profile=profile, alerts=alerts)
     user_prompt = (
@@ -205,6 +295,7 @@ async def run_ai_analysis(profile, alerts, event_callback):
         f"work_situation={profile['work_situation']}, primary_concern={profile['primary_concern']}"
     )
 
+    # stream agent nodes, emitting sse events for each tool call
     tool_rounds = 0
     async with guardian_agent.iter(user_prompt, deps=deps) as run:
         async for node in run:
@@ -234,69 +325,16 @@ async def run_ai_analysis(profile, alerts, event_callback):
     return result.output
 
 
-TOOL_DESCRIPTIONS = {
-    "search_threats": "Filtering threat database...",
-    "triage_alerts": "Classifying alert relevance...",
-}
+# --- external api helpers ---
 
-
-async def stream_tool_events(node, ctx, event_callback):
-    current_tool = "unknown"
-    tool_start_time = None
-    async with node.stream(ctx) as stream:
-        async for event in stream:
-            if hasattr(event, "part") and hasattr(event.part, "tool_name"):
-                current_tool = event.part.tool_name
-                tool_start_time = time.time()
-                await emit(
-                    event_callback,
-                    "tool_start",
-                    {
-                        "tool": current_tool,
-                        "description": TOOL_DESCRIPTIONS.get(
-                            current_tool, "Processing..."
-                        ),
-                    },
-                )
-            if not hasattr(event, "result"):
-                continue
-            latency = f"{time.time() - tool_start_time:.1f}" if tool_start_time else ""
-            await emit(
-                event_callback,
-                "tool_result",
-                {
-                    "tool": current_tool,
-                    "summary": summarize_result(current_tool, event.result),
-                    "latency": latency,
-                },
-            )
-
-
-def summarize_result(tool_name, result):
-    count = len(result) if isinstance(result, (list, dict)) else None
-    if tool_name == "search_threats":
-        return f"Found {count} relevant alerts" if count else "Threats filtered"
-    if tool_name == "triage_alerts":
-        return f"Scored {count} alerts by risk" if count else "Alerts classified"
-    return f"{count} results" if count else "Complete"
-
-
-phishing_agent = Agent(
-    TRIAGE_MODEL,
-    output_type=PhishingResult,
-    instructions=PROMPTS["phishing_system"],
-    model_settings={"temperature": 0.0},
-)
-
-
-URL_EXTRACT = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
 SAFE_BROWSING_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
 HIBP_URL = "https://api.pwnedpasswords.com/range/"
 
 
+# checks urls against google safe browsing api
 async def _scan_urls(text):
     api_key = os.environ.get("GOOGLE_SAFE_BROWSING_KEY", "")
-    urls = URL_EXTRACT.findall(text)
+    urls = URL_PATTERN.findall(text)
     if not api_key or not urls:
         return {"urls_found": len(urls), "api_configured": bool(api_key), "threats": []}
 
@@ -324,6 +362,7 @@ async def _scan_urls(text):
     return {"urls_found": len(urls), "api_configured": True, "threats": matches}
 
 
+# checks password against have i been pwned using k-anonymity
 async def _check_hibp(password):
     sha1 = hashlib.sha1(password.encode()).hexdigest().upper()
     prefix, suffix = sha1[:5], sha1[5:]
@@ -348,6 +387,10 @@ async def _check_hibp(password):
     return {"breached": breach_count > 0, "count": breach_count}
 
 
+# --- phishing analysis (3 modes: ai, api-only, offline) ---
+
+
+# ai mode runs safe browsing first, then feeds results to gemini
 async def analyze_phishing(text):
     if ai_mode:
         scan = await _scan_urls(text)
@@ -355,6 +398,7 @@ async def analyze_phishing(text):
     return analyze_phishing_offline(text)
 
 
+# builds context from url scan and sends to phishing agent
 async def _analyze_phishing_ai(text, url_scan):
     scan_context = ""
     if url_scan["threats"]:
@@ -377,6 +421,7 @@ async def _analyze_phishing_ai(text, url_scan):
     return result.output
 
 
+# api-only mode: safe browsing scan + offline rules (no ai)
 async def analyze_phishing_api(text):
     scan = await _scan_urls(text)
     result = analyze_phishing_offline(text)
@@ -410,6 +455,10 @@ async def analyze_phishing_api(text):
     return result
 
 
+# --- password check (3 modes: ai, api-only, offline) ---
+
+
+# ai mode runs hibp first, then feeds results to gemini
 async def check_password(password):
     if ai_mode:
         hibp = await _check_hibp(password)
@@ -417,6 +466,7 @@ async def check_password(password):
     return check_password_offline(password)
 
 
+# combines offline strength check + hibp data, sends to password agent
 async def _check_password_ai(password, hibp):
     strength = check_password_offline(password)
     breach_context = ""
@@ -435,9 +485,7 @@ async def _check_password_ai(password, hibp):
         f"predictability patterns. Keep reasons as a list of short bullet points."
     )
     start = time.time()
-    result = await Agent(
-        TRIAGE_MODEL, output_type=PasswordResult, model_settings={"temperature": 0.0}
-    ).run(prompt)
+    result = await password_agent.run(prompt)
     latency = int((time.time() - start) * 1000)
     log_audit("check_password", "ai+hibp", result.output.strength, latency, TRIAGE_MODEL)
 
@@ -446,6 +494,7 @@ async def _check_password_ai(password, hibp):
     return result.output
 
 
+# api-only mode: hibp breach scan + offline rules (no ai)
 async def check_password_api(password):
     hibp = await _check_hibp(password)
     result = check_password_offline(password)

@@ -3,12 +3,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# load env before anything else touches os.environ
 load_dotenv()
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
+import app.agent as agent
 from app.agent import (
     analyze_phishing,
     analyze_phishing_api,
@@ -42,11 +44,10 @@ from app.schemas import (
     load_phishing_samples,
 )
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+# tailwind classes for severity dot colors
 SEVERITY_COLORS = {
     "critical": "bg-status-red",
     "high": "bg-status-orange",
@@ -55,11 +56,13 @@ SEVERITY_COLORS = {
 }
 
 
+# builds alert filter urls preserving active params
 def build_filter_url(**params):
     qs = "&".join(f"{k}={v}" for k, v in params.items() if v)
     return f"/alerts?{qs}" if qs else "/alerts"
 
 
+# shared template context for profile create/edit forms
 def form_context():
     return {
         "regions": VALID_REGIONS,
@@ -88,6 +91,7 @@ def health():
     return {"status": "ok"}
 
 
+# landing page: redirects to latest profile, or shows create form
 @app.get("/")
 def index(request: Request, new: str | None = None):
     profiles = list_profiles()
@@ -102,6 +106,7 @@ def index(request: Request, new: str | None = None):
     )
 
 
+# alert feed with severity/category/service filter pills
 @app.get("/alerts")
 def alerts_page(
     request: Request,
@@ -134,6 +139,10 @@ def alerts_page(
     )
 
 
+# --- profile crud ---
+
+
+# profile list with collapsed create form
 @app.get("/profiles")
 def profiles_list(request: Request):
     profiles = list_profiles()
@@ -147,21 +156,7 @@ def profiles_list(request: Request):
     )
 
 
-@app.get("/profiles/{profile_id}/edit")
-def edit_profile_page(request: Request, profile_id: int):
-    profile = get_profile(profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return templates.TemplateResponse(
-        "edit.html",
-        {
-            "request": request,
-            "profile": profile,
-            **form_context(),
-        },
-    )
-
-
+# creates a new profile and redirects to analysis page
 @app.post("/profiles")
 def post_profile(
     region: str = Form(...),
@@ -184,6 +179,7 @@ def post_profile(
     return RedirectResponse(url=f"/profiles/{profile_id}", status_code=303)
 
 
+# main analysis page with hero button and profile chip
 @app.get("/profiles/{profile_id}")
 def view_profile(request: Request, profile_id: int):
     profile = get_profile(profile_id)
@@ -199,6 +195,23 @@ def view_profile(request: Request, profile_id: int):
     )
 
 
+# edit profile form
+@app.get("/profiles/{profile_id}/edit")
+def edit_profile_page(request: Request, profile_id: int):
+    profile = get_profile(profile_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return templates.TemplateResponse(
+        "edit.html",
+        {
+            "request": request,
+            "profile": profile,
+            **form_context(),
+        },
+    )
+
+
+# updates profile and redirects back
 @app.post("/profiles/{profile_id}")
 def post_update_profile(
     profile_id: int,
@@ -226,6 +239,10 @@ def post_update_profile(
     return RedirectResponse(url=f"/profiles/{profile_id}", status_code=303)
 
 
+# --- sse streaming ---
+
+
+# formats a server-sent event with event name and data lines
 def format_sse(event, data):
     msg = f"event: {event}\n"
     for line in data.split("\n"):
@@ -234,9 +251,11 @@ def format_sse(event, data):
     return msg
 
 
+# injected before each timeline row to stop previous live timers
 FREEZE_TIMERS = '<script>document.querySelectorAll(".live-timer").forEach(function(e){e.classList.remove("live-timer")})</script>'
 
 
+# builds html for a tool start or tool result row in the timeline
 def render_tool_event(event_type, data):
     tool = data["tool"]
     if event_type == "tool_start":
@@ -264,6 +283,7 @@ def render_tool_event(event_type, data):
     )
 
 
+# swaps the run button to "analyzing" and injects the sse container
 @app.get("/analyze/{profile_id}")
 async def analyze_init(profile_id: int):
     profile = get_profile(profile_id)
@@ -290,6 +310,7 @@ async def analyze_init(profile_id: int):
     return HTMLResponse(html)
 
 
+# streams tool events via sse, then sends the final briefing
 @app.get("/analyze/{profile_id}/stream")
 async def analyze_stream(profile_id: int):
     profile = get_profile(profile_id)
@@ -308,6 +329,7 @@ async def analyze_stream(profile_id: int):
 
         asyncio.create_task(run())
 
+        # drain queue until analysis is done
         while True:
             event_type, data = await queue.get()
             if event_type == "done":
@@ -329,12 +351,17 @@ async def analyze_stream(profile_id: int):
     )
 
 
+# flips global ai_mode toggle
 @app.post("/toggle-ai")
 async def toggle_ai():
     enabled = toggle_ai_mode()
     return {"enabled": enabled}
 
 
+# --- phishing + password tools ---
+
+
+# phishing analyzer page with sample picker
 @app.get("/phishing")
 def phishing_page(request: Request):
     samples = load_phishing_samples()
@@ -344,6 +371,7 @@ def phishing_page(request: Request):
     )
 
 
+# analyzes email text, returns partial result html
 @app.post("/phishing/analyze")
 async def phishing_analyze(
     request: Request, email_text: str = Form(...), mode: str = Form("auto")
@@ -352,8 +380,9 @@ async def phishing_analyze(
         return HTMLResponse(
             '<div class="text-dim text-[13px]">Please enter email text to analyze.</div>'
         )
-    from app.agent import ai_mode as current_ai_mode
+    current_ai_mode = agent.ai_mode
 
+    # route to the right analysis mode
     if mode == "api":
         result = await analyze_phishing_api(email_text)
         mode_label = "Safe Browsing"
@@ -369,6 +398,7 @@ async def phishing_analyze(
     )
 
 
+# password checker page
 @app.get("/password")
 def password_page(request: Request):
     return templates.TemplateResponse(
@@ -377,6 +407,7 @@ def password_page(request: Request):
     )
 
 
+# checks password strength, returns partial result html
 @app.post("/password/check")
 async def password_check(
     request: Request, password: str = Form(...), mode: str = Form("auto")
@@ -385,8 +416,9 @@ async def password_check(
         return HTMLResponse(
             '<div class="text-dim text-[13px]">Please enter a password to check.</div>'
         )
-    from app.agent import ai_mode as current_ai_mode
+    current_ai_mode = agent.ai_mode
 
+    # route to the right analysis mode
     if mode == "api":
         result = await check_password_api(password)
         mode_label = "Breach Scan"
@@ -402,6 +434,7 @@ async def password_check(
     )
 
 
+# audit log table showing all tool calls
 @app.get("/audit")
 def audit_page(request: Request):
     entries = get_audit_log()
