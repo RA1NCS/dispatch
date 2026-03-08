@@ -78,40 +78,103 @@
                 -webkit-font-smoothing: antialiased;
             }
 
-            body::after {
-                content: '';
+            /* --- animated starfield --- */
+
+            #starfield {
                 position: fixed;
+                inset: 0;
+                z-index: 0;
+                pointer-events: none;
+                overflow: hidden;
+            }
+
+            .stars-sm, .stars-md, .stars-lg {
+                position: absolute;
                 top: 0;
                 left: 0;
                 width: 1px;
                 height: 1px;
-                pointer-events: none;
-                z-index: 0;
+                border-radius: 50%;
+            }
+
+            /* small stars: most numerous, dimmest, fastest twinkle */
+            .stars-sm {
+                animation: twinkle-a 4s ease-in-out infinite, drift 90s linear infinite;
                 box-shadow:
-                    85vw 8vh 0 0.4px rgba(255,255,255,0.20),
-                    12vw 15vh 0 0.3px rgba(255,255,255,0.12),
-                    45vw 6vh 0 0.5px rgba(255,255,255,0.15),
-                    72vw 22vh 0 0.3px rgba(255,255,255,0.08),
-                    28vw 35vh 0 0.4px rgba(255,255,255,0.15),
-                    91vw 42vh 0 0.3px rgba(255,255,255,0.12),
-                    8vw 55vh 0 0.5px rgba(255,255,255,0.08),
-                    55vw 48vh 0 0.3px rgba(255,255,255,0.20),
-                    38vw 62vh 0 0.4px rgba(255,255,255,0.12),
-                    78vw 58vh 0 0.3px rgba(255,255,255,0.15),
-                    15vw 72vh 0 0.5px rgba(255,255,255,0.08),
-                    62vw 75vh 0 0.3px rgba(255,255,255,0.20),
-                    42vw 82vh 0 0.4px rgba(255,255,255,0.12),
-                    88vw 78vh 0 0.3px rgba(255,255,255,0.15),
-                    5vw 88vh 0 0.5px rgba(255,255,255,0.08),
-                    70vw 92vh 0 0.3px rgba(255,255,255,0.20),
-                    25vw 95vh 0 0.4px rgba(255,255,255,0.12),
-                    50vw 28vh 0 0.3px rgba(255,255,255,0.08),
-                    95vw 65vh 0 0.5px rgba(255,255,255,0.15),
-                    33vw 18vh 0 0.3px rgba(255,255,255,0.12),
-                    65vw 38vh 0 0.4px rgba(255,255,255,0.20),
-                    18vw 45vh 0 0.3px rgba(255,255,255,0.08),
-                    82vw 85vh 0 0.5px rgba(255,255,255,0.15),
-                    48vw 52vh 0 0.3px rgba(255,255,255,0.12);
+                    12vw 8vh 0 0.3px rgba(255,255,255,0.15),
+                    35vw 14vh 0 0.3px rgba(255,255,255,0.10),
+                    58vw 5vh 0 0.4px rgba(255,255,255,0.12),
+                    82vw 19vh 0 0.3px rgba(255,255,255,0.18),
+                    7vw 32vh 0 0.3px rgba(255,255,255,0.10),
+                    45vw 28vh 0 0.5px rgba(255,255,255,0.14),
+                    68vw 41vh 0 0.3px rgba(255,255,255,0.12),
+                    23vw 55vh 0 0.4px rgba(255,255,255,0.10),
+                    91vw 48vh 0 0.3px rgba(255,255,255,0.16),
+                    52vw 63vh 0 0.3px rgba(255,255,255,0.12),
+                    15vw 75vh 0 0.5px rgba(255,255,255,0.10),
+                    76vw 72vh 0 0.3px rgba(255,255,255,0.15),
+                    38vw 85vh 0 0.4px rgba(255,255,255,0.12),
+                    88vw 91vh 0 0.3px rgba(255,255,255,0.10),
+                    5vw 95vh 0 0.3px rgba(255,255,255,0.14);
+            }
+
+            /* medium stars: fewer, brighter, offset twinkle */
+            .stars-md {
+                animation: twinkle-b 6s ease-in-out infinite 1.5s, drift 75s linear infinite;
+                box-shadow:
+                    28vw 12vh 0 0.8px rgba(255,255,255,0.25),
+                    72vw 22vh 0 1px rgba(255,255,255,0.20),
+                    48vw 38vh 0 0.8px rgba(255,255,255,0.30),
+                    8vw 52vh 0 1px rgba(255,255,255,0.15),
+                    85vw 45vh 0 0.8px rgba(255,255,255,0.35),
+                    55vw 68vh 0 1px rgba(255,255,255,0.20),
+                    18vw 78vh 0 0.8px rgba(255,255,255,0.25),
+                    65vw 82vh 0 1px rgba(255,255,255,0.18),
+                    92vw 65vh 0 0.8px rgba(255,255,255,0.30),
+                    40vw 92vh 0 1px rgba(255,255,255,0.22);
+            }
+
+            /* large stars: rarest, brightest, reverse drift for parallax */
+            .stars-lg {
+                animation: twinkle-c 8s ease-in-out infinite 3s, drift 60s linear infinite reverse;
+                box-shadow:
+                    20vw 18vh 0 1.5px rgba(255,255,255,0.40),
+                    62vw 10vh 0 2px rgba(255,255,255,0.30),
+                    78vw 55vh 0 1.5px rgba(255,255,255,0.50),
+                    35vw 70vh 0 2px rgba(255,255,255,0.35),
+                    90vw 82vh 0 1.5px rgba(255,255,255,0.45),
+                    10vw 42vh 0 2px rgba(255,255,255,0.60);
+            }
+
+            @keyframes twinkle-a {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.4; }
+            }
+            @keyframes twinkle-b {
+                0%, 100% { opacity: 1; }
+                40% { opacity: 0.35; }
+                70% { opacity: 0.8; }
+            }
+            @keyframes twinkle-c {
+                0%, 100% { opacity: 1; }
+                30% { opacity: 0.5; }
+                60% { opacity: 0.3; }
+                80% { opacity: 0.7; }
+            }
+            @keyframes drift {
+                0% { transform: translateY(0); }
+                100% { transform: translateY(-30px); }
+            }
+
+            /* nebula: layered radial gradients for atmospheric depth */
+            .nebula {
+                position: absolute;
+                inset: 0;
+                background:
+                    radial-gradient(ellipse 800px 600px at 15% 25%, rgb(var(--accent) / 0.10) 0%, transparent 70%),
+                    radial-gradient(ellipse 600px 500px at 75% 60%, rgba(26, 16, 64, 0.08) 0%, transparent 65%),
+                    radial-gradient(ellipse 700px 500px at 80% 75%, rgb(var(--accent) / 0.08) 0%, transparent 65%),
+                    radial-gradient(ellipse 600px 300px at 45% 90%, rgb(var(--accent) / 0.05) 0%, transparent 60%);
             }
 
             .fade-in {
@@ -137,13 +200,14 @@
             .btn-ghost {
                 position: absolute;
                 inset: 0;
-                border: 1px solid rgb(var(--accent) / 0.15);
+                border: 1px solid rgb(var(--accent) / 0.25);
+                border-radius: 0.75rem;
                 pointer-events: none;
                 animation: ghostRise 2.4s ease-out infinite;
             }
             @keyframes ghostRise {
-                0% { opacity: 0.5; transform: translateY(0) scale(1); }
-                100% { opacity: 0; transform: translateY(-70px) scaleX(0.92) scaleY(0.8); }
+                0% { opacity: 0.6; transform: translateY(0) scale(1.02); }
+                100% { opacity: 0; transform: translateY(-100px) scaleX(0.90) scaleY(0.75); }
             }
 
             .space-glow {
@@ -152,12 +216,12 @@
             .space-glow::before {
                 content: '';
                 position: absolute;
-                top: -40px;
+                top: -60px;
                 left: 50%;
                 transform: translateX(-50%);
-                width: 600px;
-                height: 400px;
-                background: radial-gradient(ellipse, rgb(var(--accent) / 0.04) 0%, transparent 70%);
+                width: 800px;
+                height: 500px;
+                background: radial-gradient(ellipse, rgb(var(--accent) / 0.10) 0%, transparent 70%);
                 pointer-events: none;
             }
 
@@ -297,11 +361,38 @@
             .htmx-request .htmx-indicator,
             .htmx-request.htmx-indicator { display: block; }
 
+            /* active nav link underline */
+            .nav-active {
+                color: white;
+                position: relative;
+            }
+            .nav-active::after {
+                content: '';
+                position: absolute;
+                bottom: -4px;
+                left: 0;
+                right: 0;
+                height: 2px;
+                background: rgb(var(--accent));
+                border-radius: 1px;
+            }
+
+            /* shield logo pulse */
+            .shield-pulse {
+                animation: shieldGlow 3s ease-in-out infinite;
+            }
+            @keyframes shieldGlow {
+                0%, 100% { filter: drop-shadow(0 0 2px rgb(var(--accent) / 0.3)); }
+                50% { filter: drop-shadow(0 0 8px rgb(var(--accent) / 0.7)); }
+            }
+
             @media (prefers-reduced-motion: reduce) {
                 .fade-in { animation: none; }
                 .timeline-enter { animation: none; }
                 .btn-ghost { animation: none; display: none; }
                 .analyzing-pulse { animation: none; }
+                .stars-sm, .stars-md, .stars-lg { animation: none; }
+                .shield-pulse { animation: none; }
                 .htmx-added { transition: none; }
                 .svc-toggle .box { transition: none; }
                 .select-chevron { transition: none; }
@@ -312,24 +403,32 @@
         </style>
     </head>
     <body class="h-full bg-bg text-gray-300 font-sans text-[13px]">
-        <div class="min-h-full flex flex-col">
-            <nav class="border-b border-border-1 bg-surface-1 sticky top-0 z-50">
-                <div class="mx-auto max-w-5xl px-6 h-12 flex items-center justify-between font-mono">
-                    <a href="/" class="flex items-center gap-2 font-bold text-white text-[13px] tracking-tight">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-accent">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        </svg>
-                        GUARDIAN
-                    </a>
-                    <div class="flex items-center gap-5 text-[12px]">
-                        <a href="/" class="{% if request.url.path == '/' or '/profiles' in request.url.path or '/analyze' in request.url.path %}text-white{% else %}text-dim{% endif %} hover:text-white transition-colors">Home</a>
-                        <a href="/alerts" class="{% if '/alerts' in request.url.path %}text-white{% else %}text-dim{% endif %} hover:text-white transition-colors">Alerts</a>
-                        <a href="/phishing" class="{% if '/phishing' in request.url.path %}text-white{% else %}text-dim{% endif %} hover:text-white transition-colors">Phishing</a>
-                        <a href="/password" class="{% if '/password' in request.url.path %}text-white{% else %}text-dim{% endif %} hover:text-white transition-colors">Password</a>
-                        <a href="/audit" class="{% if '/audit' in request.url.path %}text-white{% else %}text-dim{% endif %} hover:text-white transition-colors">Audit</a>
-                        <div id="ai-toggle" class="flex border border-border-2 ml-2 cursor-pointer select-none" onclick="toggleAI()">
-                            <span class="toggle-on px-2.5 py-1 text-[11px] tracking-widest border-r border-border-2 transition-colors duration-150 ease">ONLINE</span>
-                            <span class="toggle-off px-2.5 py-1 text-[11px] tracking-widest transition-colors duration-150 ease">OFFLINE</span>
+        <div id="starfield">
+            <div class="stars-sm"></div>
+            <div class="stars-md"></div>
+            <div class="stars-lg"></div>
+            <div class="nebula"></div>
+        </div>
+        <div class="min-h-full flex flex-col relative z-[1]">
+            <nav class="sticky top-0 z-50 px-6 pt-3">
+                <div class="mx-auto max-w-3xl rounded-xl border border-border-1 bg-surface-1/80 backdrop-blur-md">
+                    <div class="px-6 h-12 flex items-center justify-between font-mono">
+                        <a href="/" class="flex items-center gap-2 font-bold text-white text-[13px] tracking-tight">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-accent shield-pulse">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                            GUARDIAN
+                        </a>
+                        <div class="flex items-center gap-5 text-[12px]">
+                            <a href="/" class="{% if request.url.path == '/' or '/profiles' in request.url.path or '/analyze' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Home</a>
+                            <a href="/alerts" class="{% if '/alerts' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Alerts</a>
+                            <a href="/phishing" class="{% if '/phishing' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Phishing</a>
+                            <a href="/password" class="{% if '/password' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Password</a>
+                            <a href="/audit" class="{% if '/audit' in request.url.path %}nav-active{% else %}text-dim{% endif %} hover:text-white transition-colors">Audit</a>
+                            <div id="ai-toggle" class="flex border border-border-2 ml-2 cursor-pointer select-none" onclick="toggleAI()">
+                                <span class="toggle-on px-2.5 py-1 text-[11px] tracking-widest border-r border-border-2 transition-colors duration-150 ease">ONLINE</span>
+                                <span class="toggle-off px-2.5 py-1 text-[11px] tracking-widest transition-colors duration-150 ease">OFFLINE</span>
+                            </div>
                         </div>
                     </div>
                 </div>
