@@ -1,7 +1,3 @@
-Candidate Name: Shreyan Gupta   
-Scenario Chosen: Community Safety & Digital Wellness   
-Estimated Time Spent: ~6 hours
-
 ## Dispatch
 
 Security alerts are noisy. Most people don't have time to figure out which ones actually matter to them. Dispatch is a personal security advisor that filters that noise based on your actual digital profile: what services you use, where you live, how you work.
