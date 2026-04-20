@@ -103,11 +103,9 @@ def index(request: Request, new: str | None = None):
     if profiles and new is None:
         return RedirectResponse(url=f"/profiles/{profiles[0]['id']}", status_code=302)
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {
-            "request": request,
-            **form_context(),
-        },
+        form_context(),
     )
 
 
@@ -127,9 +125,9 @@ def alerts_page(
     if service:
         alerts = [a for a in alerts if service in a["affected_services"]]
     return templates.TemplateResponse(
+        request,
         "alerts.html",
         {
-            "request": request,
             "alerts": alerts,
             "severities": ALERT_SEVERITIES,
             "categories": ALERT_CATEGORIES,
@@ -152,12 +150,9 @@ def alerts_page(
 def profiles_list(request: Request):
     profiles = list_profiles()
     return templates.TemplateResponse(
+        request,
         "profiles.html",
-        {
-            "request": request,
-            "profiles": profiles,
-            **form_context(),
-        },
+        {"profiles": profiles, **form_context()},
     )
 
 
@@ -193,9 +188,9 @@ def view_profile(request: Request, profile_id: int):
     cached = _briefing_cache.get(profile_id)
     briefing, mode_label = cached if cached else (None, None)
     return templates.TemplateResponse(
+        request,
         "profile.html",
         {
-            "request": request,
             "profile": profile,
             "briefing": briefing,
             "mode_label": mode_label,
@@ -212,12 +207,9 @@ def edit_profile_page(request: Request, profile_id: int):
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     return templates.TemplateResponse(
+        request,
         "edit.html",
-        {
-            "request": request,
-            "profile": profile,
-            **form_context(),
-        },
+        {"profile": profile, **form_context()},
     )
 
 
@@ -394,8 +386,9 @@ async def toggle_ai():
 def phishing_page(request: Request):
     samples = load_phishing_samples()
     return templates.TemplateResponse(
+        request,
         "phishing.html",
-        {"request": request, "samples": samples},
+        {"samples": samples},
     )
 
 
@@ -416,8 +409,9 @@ async def phishing_analyze(
         result = await analyze_phishing(email_text)
         mode_label = "AI + Safe Browsing" if agent.ai_mode else "Offline"
     return templates.TemplateResponse(
+        request,
         "_phishing_result.html",
-        {"request": request, "result": result, "mode_label": mode_label},
+        {"result": result, "mode_label": mode_label},
     )
 
 
@@ -425,8 +419,8 @@ async def phishing_analyze(
 @app.get("/password")
 def password_page(request: Request):
     return templates.TemplateResponse(
+        request,
         "password.html",
-        {"request": request},
     )
 
 
@@ -441,8 +435,9 @@ async def password_check(request: Request, password: str = Form(...)):
     result = await check_password(password)
     mode_label = "Breach Scan" if agent.ai_mode else "Offline"
     return templates.TemplateResponse(
+        request,
         "_password_result.html",
-        {"request": request, "result": result, "mode_label": mode_label},
+        {"result": result, "mode_label": mode_label},
     )
 
 
@@ -451,6 +446,7 @@ async def password_check(request: Request, password: str = Form(...)):
 def audit_page(request: Request):
     entries = get_audit_log()
     return templates.TemplateResponse(
+        request,
         "audit.html",
-        {"request": request, "entries": entries},
+        {"entries": entries},
     )
